@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:test_db
+    username: sa
+    password:
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 1
+      connection-timeout: 10000
+  h2:
+    console:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+logging:
+  level:
+    root: WARN
+    com.logistics.user: INFO
+    org.springframework.test: INFO
+
+flyway:
+  enabled: true  # ← ВКЛЮЧИТЬ для тестов
+  locations: classpath:db/migration/test  # Отдельная папка для тестов
