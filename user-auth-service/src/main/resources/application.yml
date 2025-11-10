@@ -2,9 +2,18 @@ spring:
   application:
     name: UserAuthService
     description: Authentication and User Management Service for Logistics System
+
   data:
     redis:
-      host: localhost
+      url: redis://localhost:6379
+
+  modulith:
+    events:
+      jdbc:
+        schema: shared_data
+
+  flyway:
+    baseline-on-migrate: true
 
 server:
   port: 8080
@@ -25,16 +34,15 @@ management:
     metrics:
       enabled: true
 
-
-logging:
-  level:
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-  pattern:
-    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
-
 app:
   jwt:
     secret: dev-secret-key
     expiration: 86400000
     refresh-expiration: 604800000
+
+logging:
+  level:
+    root: INFO
+    com.logistics: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
