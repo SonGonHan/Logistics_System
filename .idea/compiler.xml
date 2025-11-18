@@ -7,15 +7,26 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="user-auth-service" />
+      </profile>
+      <profile name="Annotation profile for Logistics System" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
+        </processorPath>
         <module name="shared-library" />
+        <module name="user-auth-service" />
         <module name="db-migration" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="shared-library" options="" />
+      <module name="db-migration" options="-parameters" />
+      <module name="logistics-system" options="" />
+      <module name="shared-library" options="-parameters" />
+      <module name="user-auth-service" options="-parameters" />
     </option>
   </component>
 </project>

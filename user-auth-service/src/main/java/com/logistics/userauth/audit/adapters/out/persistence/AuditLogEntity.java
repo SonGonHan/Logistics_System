@@ -2,12 +2,15 @@ package com.logistics.userauth.audit.adapters.out.persistence;
 
 import com.logistics.shared.audit_action.persistence.AuditActionTypeEntity;
 import com.logistics.userauth.user.adapters.out.persistence.UserEntity;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
+import io.hypersistence.utils.hibernate.type.basic.PostgreSQLInetType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Type;
 import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
 
@@ -20,19 +23,20 @@ import java.util.Map;
 @Entity
 @Table(
         name = "audit_logs",
-        schema = "user_management",
-        indexes = {
-                @Index(columnList = "user_id", name = "idx_audit_logs_user_id"),
-                @Index(columnList = "action_type_id", name = "idx_audit_logs_action_type_id"),
-                @Index(columnList = "table_name, record_id", name = "idx_audit_logs_record"),
-                @Index(columnList = "performed_at", name = "idx_audit_logs_performed_at")
-        }
+        schema = "user_management"
+//        ,
+//        indexes = {
+//                @Index(columnList = "user_id", name = "idx_audit_logs_user_id"),
+//                @Index(columnList = "action_type_id", name = "idx_audit_logs_action_type_id"),
+//                @Index(columnList = "table_name, record_id", name = "idx_audit_logs_record"),
+//                @Index(columnList = "performed_at", name = "idx_audit_logs_performed_at")
+//        }
 )
 @Builder
 public class AuditLogEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "audit_log_id")
     private Long id;
 
@@ -62,5 +66,6 @@ public class AuditLogEntity {
     private LocalDateTime performedAt;
 
     @Column(name = "ip_address", columnDefinition = "inet")
-    private String ipAddress;
+    @Type(PostgreSQLInetType.class)
+    private Inet ipAddress;
 }

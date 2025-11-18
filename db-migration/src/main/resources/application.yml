@@ -1,3 +1,8 @@
+logging:
+  level:
+    org.flywaydb: INFO
+    org.springframework: INFO
+
 spring:
   application:
     name: db-migration
@@ -14,13 +19,9 @@ spring:
     sql-migration-prefix: V
     sql-migration-separator: __
     sql-migration-suffixes: .sql
+    create-schemas: true
   jpa:
     hibernate:
       ddl-auto: validate
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     show-sql: false
-
-logging:
-  level:
-    org.flywaydb: INFO
-    org.springframework: INFO

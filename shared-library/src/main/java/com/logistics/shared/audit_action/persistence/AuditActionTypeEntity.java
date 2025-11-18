@@ -18,13 +18,12 @@ import lombok.NoArgsConstructor;
                 @UniqueConstraint(columnNames = "action_name")
         },
         indexes = {
-                @Index(columnList = "user_id", name = "idx_user_sessions_user_id"),
-                @Index(columnList = "expires_at", name = "idx_user_sessions_expires_at")
+//                @Index(columnList = "action_name", name = "audit_action_types_action_name_key")
         }
 )
 public class AuditActionTypeEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "action_type_id")
     private Short id;
 

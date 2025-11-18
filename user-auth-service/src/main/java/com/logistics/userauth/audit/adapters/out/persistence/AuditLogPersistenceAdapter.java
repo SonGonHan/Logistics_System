@@ -9,7 +9,9 @@ import com.logistics.userauth.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 @Component
 @RequiredArgsConstructor
@@ -33,8 +35,8 @@ public class AuditLogPersistenceAdapter implements AuditLogRepository {
     }
 
     @Override
-    public Optional<AuditLog> findByUser(User user) {
-        return jpaRepo.findByUser(userMapper.toEntity(user)).map(auditLogMapper::toDomain);
+    public List<AuditLog> findByUser(User user) {
+        return jpaRepo.findByUser(userMapper.toEntity(user)).stream().map(auditLogMapper::toDomain).toList();
     }
 
     @Override

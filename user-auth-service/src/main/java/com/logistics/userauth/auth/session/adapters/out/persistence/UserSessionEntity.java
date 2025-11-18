@@ -1,11 +1,14 @@
 package com.logistics.userauth.auth.session.adapters.out.persistence;
 
 import com.logistics.userauth.user.adapters.out.persistence.UserEntity;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
+import io.hypersistence.utils.hibernate.type.basic.PostgreSQLInetType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Type;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
@@ -29,7 +32,7 @@ import java.time.LocalDateTime;
 public class UserSessionEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "session_id")
     private Long id;
 
@@ -47,8 +50,10 @@ public class UserSessionEntity {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+
     @Column(name = "ip_address", columnDefinition = "inet")
-    private String ipAddress;
+    @Type(PostgreSQLInetType.class)
+    private Inet ipAddress;
 
     @Column(name = "user_agent")
     private String userAgent; // Браузер

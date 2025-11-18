@@ -1,6 +1,7 @@
 package com.logistics.userauth.auth.session.adapters.in.dto;
 
 
+import io.hypersistence.utils.hibernate.type.basic.Inet;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,7 +19,7 @@ public class UserSessionDTO {
 
     private LocalDateTime expiresAt;
 
-    private String ipAddress;
+    private Inet ipAddress;
 
     private String userAgent;
 }

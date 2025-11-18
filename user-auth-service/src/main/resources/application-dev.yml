@@ -34,6 +34,7 @@ spring:
   flyway:
     enabled: false
     locations: classpath:db/migration
+    create-schemas: true
 
 logging:
   level:

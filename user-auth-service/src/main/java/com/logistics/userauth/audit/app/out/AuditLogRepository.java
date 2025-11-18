@@ -5,6 +5,7 @@ import com.logistics.shared.audit_action.domain.AuditActionType;
 import com.logistics.userauth.audit.domain.AuditLog;
 import com.logistics.userauth.user.domain.User;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface AuditLogRepository {
@@ -12,7 +13,7 @@ public interface AuditLogRepository {
 
     void delete(AuditLog auditLog);
 
-    Optional<AuditLog> findByUser(User user);
+    List<AuditLog> findByUser(User user);
 
     Optional<AuditLog> findByActionType(AuditActionType actionType);
 

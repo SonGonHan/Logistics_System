@@ -24,14 +24,14 @@ import java.time.LocalDateTime;
                 @Index(columnList = "email", name = "idx_users_email"),
                 @Index(columnList = "phone", name = "idx_users_phone"),
                 @Index(columnList = "role_name", name = "idx_users_role_name"),
-                @Index(columnList = "last_accessed", name = "idx_users_last_accessed"),
+                @Index(columnList = "last_accessed_at", name = "idx_users_last_accessed"),
                 @Index(columnList = "facility_id", name = "idx_users_facility_id")
         }
 )
 @Builder
 public class UserEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "user_id")
     private Long id;
 

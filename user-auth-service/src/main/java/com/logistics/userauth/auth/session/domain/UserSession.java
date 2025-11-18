@@ -1,6 +1,7 @@
 package com.logistics.userauth.auth.session.domain;
 
 import com.logistics.userauth.user.domain.User;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -24,7 +25,7 @@ public class UserSession {
 
     private LocalDateTime expiresAt;
 
-    private String ipAddress;
+    private Inet ipAddress;
 
     private String userAgent;
 

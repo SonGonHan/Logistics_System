@@ -2,6 +2,7 @@ package com.logistics.userauth.audit.domain;
 
 import com.logistics.shared.audit_action.domain.AuditActionType;
 import com.logistics.userauth.user.domain.User;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -32,5 +33,5 @@ public class AuditLog {
 
     private LocalDateTime performedAt;
 
-    private String ipAddress;
+    private Inet ipAddress;
 }

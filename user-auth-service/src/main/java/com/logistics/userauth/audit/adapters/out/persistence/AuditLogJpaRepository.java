@@ -6,12 +6,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 interface AuditLogJpaRepository extends JpaRepository<AuditLogEntity, Long> {
 
-    Optional<AuditLogEntity> findByUser(UserEntity user);
+    List<AuditLogEntity> findByUser(UserEntity user);
 
     Optional<AuditLogEntity> findByActionType(AuditActionTypeEntity actionType);
 
