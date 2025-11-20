@@ -22,7 +22,7 @@
 
     <modules>
         <module>shared-library</module>
-        <module>db-migration</module>
+        <module>backend/db-migration</module>
         <module>user-auth-service</module>
     </modules>
 

@@ -5,7 +5,7 @@ RUN mvn clean install -DskipTests
 
 FROM eclipse-temurin:21-jdk-alpine
 WORKDIR /app
-COPY --from=builder /app/db-migration/target/db-migration-1.0.0.jar app.jar
-COPY --from=builder /app/db-migration/docker-entrypoint.sh /app/entrypoint.sh
+COPY --from=builder /app/backend/db-migration/target/db-migration-1.0.0.jar app.jar
+COPY --from=builder /app/backend/db-migration/docker-entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 ENTRYPOINT ["/app/entrypoint.sh"]
