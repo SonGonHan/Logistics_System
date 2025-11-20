@@ -25,7 +25,7 @@ services:
   db-migration:
     build:
       context: .
-      dockerfile: db-migration/Dockerfile
+      dockerfile: backend/db-migration/Dockerfile
     container_name: db-migration
     depends_on:
       postgres:
@@ -46,7 +46,7 @@ services:
   user-auth-service:
     build:
       context: .                                # Контекст = корневая папка!
-      dockerfile: user-auth-service/Dockerfile # Dockerfile внутри папки
+      dockerfile: backend/user-auth-service/Dockerfile # Dockerfile внутри папки
     container_name: user-auth-service
     ports:
       - "8080:8080"

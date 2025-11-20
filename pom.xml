@@ -21,9 +21,9 @@
     <description>Multi-module Logistics System</description>
 
     <modules>
-        <module>shared-library</module>
+        <module>backend/shared-library</module>
         <module>backend/db-migration</module>
-        <module>user-auth-service</module>
+        <module>backend/user-auth-service</module>
     </modules>
 
     <properties>

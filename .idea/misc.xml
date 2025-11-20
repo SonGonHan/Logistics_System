@@ -10,7 +10,16 @@
         <option value="$PROJECT_DIR$/db-migration/pom.xml" />
         <option value="$PROJECT_DIR$/shared-library/pom.xml" />
         <option value="$PROJECT_DIR$/backend/db-migration/pom.xml" />
+        <option value="$PROJECT_DIR$/backend/user-auth-service/pom.xml" />
+        <option value="$PROJECT_DIR$/backend/shared-library/pom.xml" />
       </list>
+    </option>
+    <option name="ignoredFiles">
+      <set>
+        <option value="$PROJECT_DIR$/db-migration/pom.xml" />
+        <option value="$PROJECT_DIR$/shared-library/pom.xml" />
+        <option value="$PROJECT_DIR$/user-auth-service/pom.xml" />
+      </set>
     </option>
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_21_PREVIEW" project-jdk-name="ms-21" project-jdk-type="JavaSDK">
