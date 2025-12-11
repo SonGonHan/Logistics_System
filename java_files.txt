@@ -1,0 +1,2653 @@
+=== backend/shared-library/src/main/java/com/logistics/shared/SharedLibraryConfiguration.java ===
+package com.logistics.shared;
+
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
+//@SpringBootConfiguration
+@Configuration
+@EntityScan("com.logistics.shared")
+@EnableJpaRepositories("com.logistics.shared")
+public class SharedLibraryConfiguration {
+
+}
+
+
+=== backend/shared-library/src/main/java/com/logistics/shared/audit_action/persistence/AuditActionTypeMapper.java ===
+package com.logistics.shared.audit_action.persistence;
+
+import com.logistics.shared.audit_action.domain.AuditActionType;
+import org.springframework.stereotype.Component;
+
+@Component
+public class AuditActionTypeMapper {
+
+    public AuditActionType toDomain(AuditActionTypeEntity entity) {
+        return AuditActionType.builder()
+                .id(entity.getId())
+                .actionName(entity.getActionName())
+                .category(entity.getCategory())
+                .description(entity.getDescription())
+                .build();
+    }
+
+    public AuditActionTypeEntity toEntity(AuditActionType domain) {
+        return AuditActionTypeEntity.builder()
+                .id(domain.getId())
+                .actionName(domain.getActionName())
+                .category(domain.getCategory())
+                .description(domain.getDescription())
+                .build();
+    }
+}
+
+
+
+=== backend/shared-library/src/main/java/com/logistics/shared/audit_action/persistence/AuditActionJpaRepository.java ===
+package com.logistics.shared.audit_action.persistence;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface AuditActionJpaRepository extends JpaRepository<AuditActionTypeEntity, Integer> {
+
+    Optional<AuditActionTypeEntity> findByCategory(String category);
+
+    Optional<AuditActionTypeEntity> findByActionName(String actionName);
+}
+
+
+
+=== backend/shared-library/src/main/java/com/logistics/shared/audit_action/persistence/AuditActionTypeEntity.java ===
+package com.logistics.shared.audit_action.persistence;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+@Entity
+@Table(
+        name = "audit_action_types",
+        schema = "shared_data",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = "action_name")
+        },
+        indexes = {
+//                @Index(columnList = "action_name", name = "audit_action_types_action_name_key")
+        }
+)
+public class AuditActionTypeEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "audit_action_type_seq")
+    @SequenceGenerator(
+            name = "audit_action_type_seq",
+            sequenceName = "audit_action_types_action_type_id_seq",
+            schema = "shared_data",
+            allocationSize = 1
+    )
+    @Column(name = "action_type_id")
+    private Short id;
+
+    @Column(name = "action_name", nullable = false)
+    private String actionName;
+
+    @Column(name = "category", nullable = false)
+    private String category;
+
+    @Column(name = "description")
+    private String description;
+
+}
+
+
+
+=== backend/shared-library/src/main/java/com/logistics/shared/audit_action/domain/AuditActionType.java ===
+package com.logistics.shared.audit_action.domain;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class AuditActionType {
+
+    private short id;
+
+    private String actionName;
+
+    private String category;
+
+    private String description;
+}
+
+
+
+=== backend/shared-library/src/main/java/com/logistics/shared/audit_action/AuditActionTypeService.java ===
+package com.logistics.shared.audit_action;
+
+import com.logistics.shared.audit_action.domain.AuditActionType;
+import com.logistics.shared.audit_action.persistence.AuditActionJpaRepository;
+import com.logistics.shared.audit_action.persistence.AuditActionTypeMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class AuditActionTypeService {
+
+    private final AuditActionJpaRepository repo;
+    private final AuditActionTypeMapper mapper;
+
+    public Optional<AuditActionType> getActionTypeById(Integer id) {
+        return repo.findById(id).map(mapper::toDomain);
+    }
+
+    public Optional<AuditActionType> getActionTypeActionName(String actionName) {
+        return repo.findByActionName(actionName).map(mapper::toDomain);
+    }
+
+    public Optional<AuditActionType> getActionTypeByCategory(String category) {
+        return repo.findByCategory(category).map(mapper::toDomain);
+    }
+
+}
+
+
+=== backend/shared-library/src/test/java/com/logistics/shared/IntegrationTest.java ===
+package com.logistics.shared;
+
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Testcontainers
+@ActiveProfiles("test")
+public @interface IntegrationTest {
+}
+
+
+
+=== backend/shared-library/src/test/java/com/logistics/shared/TestApplication.java ===
+package com.logistics.shared;
+
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Import;
+
+@SpringBootApplication
+@Import(SharedLibraryConfiguration.class)
+public class TestApplication {
+
+}
+
+
+=== backend/shared-library/src/test/java/com/logistics/shared/SharedLibraryApplicationTests.java ===
+package com.logistics.shared;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
+@SpringBootTest
+@ActiveProfiles("test")
+@DisplayName("Тесты загрузки контекста для Shared Library")
+class SharedLibraryApplicationTests {
+
+    @Test
+    @DisplayName("Должен успешно загрузить контекст Spring")
+    void contextLoads() {
+        // Этот тест проверяет, что все бины и конфигурации загружаются без ошибок
+    }
+}
+
+
+
+=== backend/shared-library/src/test/java/com/logistics/shared/audit_action/AuditActionTypeServiceTest.java ===
+package com.logistics.shared.audit_action;
+
+import com.logistics.shared.audit_action.domain.AuditActionType;
+import com.logistics.shared.audit_action.persistence.AuditActionJpaRepository;
+import com.logistics.shared.audit_action.persistence.AuditActionTypeEntity;
+import com.logistics.shared.audit_action.persistence.AuditActionTypeMapper;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("Тесты для AuditActionTypeService")
+class AuditActionTypeServiceTest {
+
+    @Mock
+    private AuditActionJpaRepository repo;
+    @Mock
+    private AuditActionTypeMapper mapper;
+    @InjectMocks
+    private AuditActionTypeService service;
+
+    private AuditActionTypeEntity testEntity;
+    private AuditActionType testDomain;
+
+    @BeforeEach
+    void setUp() {
+        testEntity = AuditActionTypeEntity.builder().id((short) 1).actionName("USER_LOGIN").category("AUTHENTICATION").description("User logged in").build();
+        testDomain = AuditActionType.builder().id((short) 1).actionName("USER_LOGIN").category("AUTHENTICATION").description("User logged in").build();
+    }
+
+    @Test
+    @DisplayName("Должен вернуть ActionType по ID")
+    void shouldGetActionTypeById() {
+        when(repo.findById(anyInt())).thenReturn(Optional.of(testEntity));
+        when(mapper.toDomain(any(AuditActionTypeEntity.class))).thenReturn(testDomain);
+
+        Optional<AuditActionType> result = service.getActionTypeById(1);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().getId()).isEqualTo((short) 1);
+        verify(repo, times(1)).findById(1);
+    }
+}
+
+
+
+
+=== backend/shared-library/src/test/java/com/logistics/shared/audit_action/persistence/AuditActionTypeMapperTest.java ===
+package com.logistics.shared.audit_action.persistence;
+
+import com.logistics.shared.audit_action.domain.AuditActionType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DisplayName("Тесты для AuditActionTypeMapper")
+class AuditActionTypeMapperTest {
+
+    private AuditActionTypeMapper mapper;
+
+    @BeforeEach
+    void setUp() {
+        mapper = new AuditActionTypeMapper();
+    }
+
+    @Test
+    @DisplayName("Должен корректно преобразовать Entity в Domain")
+    void shouldMapEntityToDomain() {
+        // Given
+        AuditActionTypeEntity entity = AuditActionTypeEntity.builder()
+                .id((short) 1)
+                .actionName("USER_LOGIN")
+                .category("AUTHENTICATION")
+                .description("Пользователь вошел в систему")
+                .build();
+
+        // When
+        AuditActionType domain = mapper.toDomain(entity);
+
+        // Then
+        assertThat(domain).isNotNull();
+        assertThat(domain.getId()).isEqualTo((short) 1);
+        assertThat(domain.getActionName()).isEqualTo("USER_LOGIN");
+        assertThat(domain.getCategory()).isEqualTo("AUTHENTICATION");
+        assertThat(domain.getDescription()).isEqualTo("Пользователь вошел в систему");
+    }
+
+    @Test
+    @DisplayName("Должен корректно преобразовать Domain в Entity")
+    void shouldMapDomainToEntity() {
+        // Given
+        AuditActionType domain = AuditActionType.builder()
+                .id((short) 2)
+                .actionName("USER_LOGOUT")
+                .category("AUTHENTICATION")
+                .description("Пользователь вышел из системы")
+                .build();
+
+        // When
+        AuditActionTypeEntity entity = mapper.toEntity(domain);
+
+        // Then
+        assertThat(entity).isNotNull();
+        assertThat(entity.getId()).isEqualTo((short) 2);
+        assertThat(entity.getActionName()).isEqualTo("USER_LOGOUT");
+        assertThat(entity.getCategory()).isEqualTo("AUTHENTICATION");
+        assertThat(entity.getDescription()).isEqualTo("Пользователь вышел из системы");
+    }
+}
+
+
+
+=== backend/shared-library/src/test/java/com/logistics/shared/audit_action/persistence/AuditActionJpaRepositoryIntegrationTest.java ===
+package com.logistics.shared.audit_action.persistence;
+
+import com.logistics.shared.IntegrationTest;
+import com.logistics.shared.TestApplication;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@IntegrationTest
+@DisplayName("Интеграционные тесты для AuditActionJpaRepository")
+//@Disabled("Mockito не поддерживает Java 25 полностью. Нужно обновить версию Mockito.")
+class AuditActionJpaRepositoryIntegrationTest {
+
+    @Autowired
+    private AuditActionJpaRepository repository;
+
+    @Test
+    @DisplayName("Должен сохранить и найти AuditActionType по ID")
+    void shouldSaveAndFindById() {
+        // Given
+        // Создаем сущность, которую собираемся сохранить
+        AuditActionTypeEntity entityToSave = AuditActionTypeEntity.builder()
+                .actionName("ORDER_CREATED")
+                .category("ORDER_MANAGEMENT")
+                .description("Заказ создан")
+                .build();
+
+        // Сохраняем и, что КЛЮЧЕВОЕ, получаем обратно экземпляр с ID
+        AuditActionTypeEntity savedEntity = repository.save(entityToSave);
+
+        // When
+        // Ищем в базе по ID, полученному от сохраненной сущности
+        Optional<AuditActionTypeEntity> found = repository.findById(Integer.valueOf(savedEntity.getId()));
+
+        // Then
+        assertThat(found).isPresent(); // Проверяем, что сущность нашлась
+        assertThat(found.get().getActionName()).isEqualTo("ORDER_CREATED"); // Проверяем ее содержимое
+        assertThat(found.get().getId()).isEqualTo(savedEntity.getId());
+    }
+
+}
+
+
+
+=== backend/db-migration/src/main/java/com/logistics/db/DbMigrationApplication.java ===
+package com.logistics.db;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
+
+@SpringBootApplication(
+		exclude = HibernateJpaAutoConfiguration.class
+)
+public class DbMigrationApplication {
+	private static final Logger log = LoggerFactory.getLogger(DbMigrationApplication.class);
+
+	public static void main(String[] args) {
+		try {
+			log.info("========== Начало инициализации БД ==========");
+			ConfigurableApplicationContext context =
+					SpringApplication.run(DbMigrationApplication.class, args);
+
+			log.info("✓ Миграции БД выполнены успешно");
+			log.info("========== Завершение работы миграций ==========");
+
+			// Закрыть контекст и завершить приложение
+			context.close();
+			System.exit(0);
+
+		} catch (Exception e) {
+			log.error("✗ Ошибка при выполнении миграций БД", e);
+			System.exit(1);
+		}
+	}
+
+}
+
+
+
+=== backend/db-migration/src/main/java/com/logistics/db/FlywayConfig.java ===
+package com.logistics.db;
+
+import org.flywaydb.core.Flyway;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import javax.sql.DataSource;
+
+@Configuration
+@EnableConfigurationProperties
+@ConditionalOnProperty(
+        name = "app.db-migration.enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
+public class FlywayConfig {
+
+    @Bean
+    public Flyway flyway(DataSource dataSource) {
+        Flyway flyway = Flyway.configure()
+                .dataSource(dataSource)
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(true)
+                .validateOnMigrate(true)
+                .cleanDisabled(true)  // Отключить очистку в production
+                .load();
+
+        flyway.migrate();
+        return flyway;
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/UserAuthServiceApplication.java ===
+package com.logistics.userauth;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
+@SpringBootApplication
+@ComponentScan(basePackages = {
+        "com.logistics.userauth",
+        "com.logistics.shared"
+})
+@EnableJpaRepositories(basePackages = "com.logistics.userauth.**.persistence")
+@EntityScan(basePackages = "com.logistics.userauth.**.persistence")
+public class UserAuthServiceApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(UserAuthServiceApplication.class, args);
+    }
+
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/audit/app/out/AuditLogRepository.java ===
+package com.logistics.userauth.audit.app.out;
+
+
+import com.logistics.shared.audit_action.domain.AuditActionType;
+import com.logistics.userauth.audit.domain.AuditLog;
+import com.logistics.userauth.user.domain.User;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface AuditLogRepository {
+    void save(AuditLog auditLog);
+
+    void delete(AuditLog auditLog);
+
+    List<AuditLog> findByUser(User user);
+
+    Optional<AuditLog> findByActionType(AuditActionType actionType);
+
+    Optional<AuditLog> findByActorIdentifier(String actorIdentifier);
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/audit/domain/AuditLog.java ===
+package com.logistics.userauth.audit.domain;
+
+import com.logistics.shared.audit_action.domain.AuditActionType;
+import com.logistics.userauth.user.domain.User;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class AuditLog {
+
+    private long id;
+
+    private User user;
+
+    private AuditActionType actionType;
+
+    private String tableName;
+
+    private long recordId;
+
+    private String actorIdentifier;
+
+    private Map<String, Object> newValues;
+
+    private LocalDateTime performedAt;
+
+    private Inet ipAddress;
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/audit/adapter/in/AuditLogControllerMapper.java ===
+package com.logistics.userauth.audit.adapter.in;
+
+import com.logistics.userauth.audit.adapter.in.dto.AuditLogDTO;
+import com.logistics.userauth.audit.domain.AuditLog;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class AuditLogControllerMapper {
+
+    private final AuditActionTypeControllerMapper actionTypeMapper;
+
+    public AuditLogDTO toDTO(AuditLog domain) {
+        return AuditLogDTO.builder()
+                .user(domain.getUser())
+                .actionTypeDTO(actionTypeMapper.toDTO(domain.getActionType()))
+                .tableName(domain.getTableName())
+                .recordId(domain.getRecordId())
+                .actorIdentifier(domain.getActorIdentifier())
+                .performedAt(domain.getPerformedAt())
+                .newValues(domain.getNewValues())
+                .build();
+    }
+
+    public AuditLog toDomain(AuditLogDTO dto) {
+        return AuditLog.builder()
+                .user(dto.user())
+                .actionType(actionTypeMapper.toDomain(dto.actionTypeDTO()))
+                .tableName(dto.tableName())
+                .recordId(dto.recordId())
+                .actorIdentifier(dto.actorIdentifier())
+                .performedAt(dto.performedAt())
+                .newValues(dto.newValues())
+                .build();
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/audit/adapter/in/AuditActionTypeControllerMapper.java ===
+package com.logistics.userauth.audit.adapter.in;
+
+import com.logistics.shared.audit_action.AuditActionTypeService;
+import com.logistics.shared.audit_action.domain.AuditActionType;
+import com.logistics.userauth.audit.adapter.in.dto.AuditActionTypeDTO;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class AuditActionTypeControllerMapper {
+
+    private final AuditActionTypeService service;
+
+    public AuditActionTypeDTO toDTO(AuditActionType domain) {
+        return AuditActionTypeDTO.builder()
+                .actionType(domain.getActionName())
+                .description(domain.getDescription())
+                .category(domain.getCategory())
+                .build();
+    }
+
+    public AuditActionType toDomain(AuditActionTypeDTO dto) {
+        return AuditActionType.builder()
+                .id(service.getActionTypeActionName(dto.actionType()).get().getId())
+                .actionName(dto.actionType())
+                .category(dto.category())
+                .description(dto.description())
+                .build();
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/audit/adapter/in/dto/AuditActionTypeDTO.java ===
+package com.logistics.userauth.audit.adapter.in.dto;
+
+import lombok.Builder;
+
+@Builder
+public record AuditActionTypeDTO (String actionType, String category, String description) {
+
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/audit/adapter/in/dto/AuditLogDTO.java ===
+package com.logistics.userauth.audit.adapter.in.dto;
+
+import com.logistics.userauth.user.domain.User;
+import lombok.Builder;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+
+@Builder
+public record AuditLogDTO (
+        User user,
+        AuditActionTypeDTO actionTypeDTO,
+        String tableName,
+        long recordId,
+        String actorIdentifier,
+        Map<String, Object> newValues,
+        LocalDateTime performedAt
+) {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/audit/adapter/out/persistence/AuditLogJpaRepository.java ===
+package com.logistics.userauth.audit.adapter.out.persistence;
+
+import com.logistics.shared.audit_action.persistence.AuditActionTypeEntity;
+import com.logistics.userauth.user.adapter.out.persistence.UserEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+interface AuditLogJpaRepository extends JpaRepository<AuditLogEntity, Long> {
+
+    List<AuditLogEntity> findByUser(UserEntity user);
+
+    Optional<AuditLogEntity> findByActionType(AuditActionTypeEntity actionType);
+
+    Optional<AuditLogEntity> findByActorIdentifier(String actorIdentifier);
+
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/audit/adapter/out/persistence/AuditLogPersistenceMapper.java ===
+package com.logistics.userauth.audit.adapter.out.persistence;
+
+import com.logistics.shared.audit_action.persistence.AuditActionTypeMapper;
+import com.logistics.userauth.audit.domain.AuditLog;
+import com.logistics.userauth.user.adapter.out.persistence.UserPersistenceMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class AuditLogPersistenceMapper {
+
+    private final AuditActionTypeMapper actionTypeMapper;
+    private final UserPersistenceMapper userMapper;
+
+    public AuditLogEntity toEntity(AuditLog domain) {
+        return AuditLogEntity.builder()
+                .id(domain.getId())
+                .user(userMapper.toEntity(domain.getUser()))
+                .actionType(actionTypeMapper.toEntity(domain.getActionType()))
+                .actorIdentifier(domain.getActorIdentifier())
+                .ipAddress(domain.getIpAddress())
+                .newValues(domain.getNewValues())
+                .performedAt(domain.getPerformedAt())
+                .tableName(domain.getTableName())
+                .recordId(domain.getRecordId())
+                .build();
+    }
+
+    public AuditLog toDomain(AuditLogEntity entity) {
+        return AuditLog.builder()
+                .id(entity.getId())
+                .user(userMapper.toDomain(entity.getUser()))
+                .actionType(actionTypeMapper.toDomain(entity.getActionType()))
+                .actorIdentifier(entity.getActorIdentifier())
+                .ipAddress(entity.getIpAddress())
+                .newValues(entity.getNewValues())
+                .performedAt(entity.getPerformedAt())
+                .tableName(entity.getTableName())
+                .recordId(entity.getRecordId())
+                .build();
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/audit/adapter/out/persistence/AuditLogPersistenceAdapter.java ===
+package com.logistics.userauth.audit.adapter.out.persistence;
+
+import com.logistics.shared.audit_action.domain.AuditActionType;
+import com.logistics.shared.audit_action.persistence.AuditActionTypeMapper;
+import com.logistics.userauth.audit.app.out.AuditLogRepository;
+import com.logistics.userauth.audit.domain.AuditLog;
+import com.logistics.userauth.user.adapter.out.persistence.UserPersistenceMapper;
+import com.logistics.userauth.user.domain.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Optional;
+
+@Component
+@RequiredArgsConstructor
+public class AuditLogPersistenceAdapter implements AuditLogRepository {
+
+    private final AuditLogJpaRepository jpaRepo;
+    private final AuditLogPersistenceMapper auditLogMapper;
+    private final UserPersistenceMapper userMapper;
+    private final AuditActionTypeMapper auditActionTypeMapper;
+
+    @Override
+    public void save(AuditLog auditLog) {
+        AuditLogEntity auditLogEntity = auditLogMapper.toEntity(auditLog);
+        jpaRepo.save(auditLogEntity);
+    }
+
+    @Override
+    public void delete(AuditLog auditLog) {
+        AuditLogEntity auditLogEntity = auditLogMapper.toEntity(auditLog);
+        jpaRepo.delete(auditLogEntity);
+    }
+
+    @Override
+    public List<AuditLog> findByUser(User user) {
+        return jpaRepo.findByUser(userMapper.toEntity(user)).stream().map(auditLogMapper::toDomain).toList();
+    }
+
+    @Override
+    public Optional<AuditLog> findByActionType(AuditActionType actionType) {
+        return jpaRepo.findByActionType(auditActionTypeMapper.toEntity(actionType)).map(auditLogMapper::toDomain);
+    }
+
+    @Override
+    public Optional<AuditLog> findByActorIdentifier(String actorIdentifier) {
+        return jpaRepo.findByActorIdentifier(actorIdentifier).map(auditLogMapper::toDomain);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/audit/adapter/out/persistence/AuditLogEntity.java ===
+package com.logistics.userauth.audit.adapter.out.persistence;
+
+import com.logistics.shared.audit_action.persistence.AuditActionTypeEntity;
+import com.logistics.userauth.user.adapter.out.persistence.UserEntity;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
+import io.hypersistence.utils.hibernate.type.basic.PostgreSQLInetType;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.Type;
+import org.hibernate.type.SqlTypes;
+import org.springframework.data.annotation.CreatedDate;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(
+        name = "audit_logs",
+        schema = "user_management"
+//        ,
+//        indexes = {
+//                @Index(columnList = "user_id", name = "idx_audit_logs_user_id"),
+//                @Index(columnList = "action_type_id", name = "idx_audit_logs_action_type_id"),
+//                @Index(columnList = "table_name, record_id", name = "idx_audit_logs_record"),
+//                @Index(columnList = "performed_at", name = "idx_audit_logs_performed_at")
+//        }
+)
+@Builder
+public class AuditLogEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "audit_logs_seq")
+    @SequenceGenerator(
+            name = "audit_logs_seq",
+            sequenceName = "audit_logs_audit_log_id_seq",
+            schema = "user_management",
+            allocationSize = 1
+    )
+    @Column(name = "audit_log_id")
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private UserEntity user;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "action_type_id")
+    private AuditActionTypeEntity actionType;
+
+    @Column(name = "table_name")
+    private String tableName;
+
+    @Column(name = "record_id")
+    private Long recordId;
+
+    @Column(name = "actor_identifier")
+    private String actorIdentifier;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "new_values", columnDefinition = "jsonb")
+    private Map<String, Object> newValues;
+
+    @CreatedDate
+    @Column(name = "performed_at")
+    private LocalDateTime performedAt;
+
+    @Column(name = "ip_address", columnDefinition = "inet")
+    @Type(PostgreSQLInetType.class)
+    private Inet ipAddress;
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/out/UserRepository.java ===
+package com.logistics.userauth.user.application.port.out;
+
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+
+import java.util.Optional;
+
+public interface UserRepository {
+    void save(User user);
+
+    void delete(User user);
+
+    Optional<User> findById(Long id);
+
+    Optional<User> findByPhone(String phone);
+
+    Optional<User> findByEmail(String email);
+
+    Optional<User> findByRole(UserRole role);
+
+    Optional<User> findByFacilityId(long id);
+
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/domain/UserRole.java ===
+package com.logistics.userauth.user.domain;
+
+public enum UserRole {
+    UNREGISTERED_CONTACT,
+    CLIENT,
+    PVZ_OPERATOR, PVZ_ADMIN,
+    COURIER, DRIVER,
+    DISPATCHER,
+    WAREHOUSE_OPERATOR, WAREHOUSE_ADMIN,
+    HR, ACCOUNTANT, SYSTEM_ADMIN,
+    SYSTEM
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/domain/User.java ===
+package com.logistics.userauth.user.domain;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class User {
+
+    private Long id;
+
+    private String email;
+
+    private String phone;
+
+    private String passwordHash;
+
+    private String firstName;
+
+    private String lastName;
+
+    private String middleName;
+
+    private UserRole role;
+
+    private Long facilityId;
+
+    private LocalDateTime lastAccessedTime;
+
+    private UserStatus status;
+
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/domain/UserStatus.java ===
+package com.logistics.userauth.user.domain;
+
+public enum UserStatus {
+    ACTIVE,
+    ON_DELETE // При установке такого статуса, на следующий день аккаунт удаляется (установка может быть по собственному желанию, может при увольнении)
+}
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/SignUpRequest.java ===
+package com.logistics.userauth.user.adapter.in.web.dto;
+
+public record SignUpRequest(
+        String email,
+        String phone,
+        String password,
+        String firstName,
+        String lastName,
+        String middleName
+) {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/UserDTO.java ===
+package com.logistics.userauth.user.adapter.in.web.dto;
+
+import com.logistics.userauth.user.domain.UserRole;
+import lombok.Builder;
+
+@Builder
+public record UserDTO (String phone,
+                       String firstName,
+                       String lastName,
+                       String middleName,
+                       UserRole role){
+
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/SignInRequest.java ===
+package com.logistics.userauth.user.adapter.in.web.dto;
+
+public record SignInRequest (String phone, String email, String password) {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/FacilityDTO.java ===
+package com.logistics.userauth.user.adapter.in.web.dto;
+
+import lombok.Builder;
+
+@Builder
+public record FacilityDTO (String name, String address) {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/UserControllerMapper.java ===
+package com.logistics.userauth.user.adapter.in;
+
+import com.logistics.userauth.user.adapter.in.web.dto.UserDTO;
+import com.logistics.userauth.user.domain.User;
+import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
+
+@Component
+public class UserControllerMapper {
+    public static UserDTO toDTO(User user) {
+        return UserDTO.builder()
+                .phone(user.getPhone())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .middleName(user.getMiddleName())
+                .role(user.getRole())
+                .build();
+    }
+
+    public static User toUser(UserDTO userDTO) {
+        return User.builder()
+                .phone(userDTO.phone())
+                .firstName(userDTO.firstName())
+                .lastName(userDTO.lastName())
+                .middleName(userDTO.middleName())
+                .role(userDTO.role())
+                .lastAccessedTime(LocalDateTime.now())
+                .build();
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/out/persistence/UserPersistenceMapper.java ===
+package com.logistics.userauth.user.adapter.out.persistence;
+
+import com.logistics.userauth.user.domain.User;
+import org.springframework.stereotype.Component;
+
+@Component
+public class UserPersistenceMapper {
+
+    public UserEntity toEntity(User domain) {
+        return UserEntity.builder()
+                .id(domain.getId())
+                .email(domain.getEmail())
+                .phone(domain.getPhone())
+                .passwordHash(domain.getPasswordHash())
+                .firstName(domain.getFirstName())
+                .lastName(domain.getLastName())
+                .middleName(domain.getMiddleName())
+                .role(domain.getRole())
+                .facilityId(domain.getFacilityId())
+                .status(domain.getStatus())
+                .lastAccessedAt(domain.getLastAccessedTime())
+                .build();
+    }
+
+    public User toDomain(UserEntity entity) {
+        return User.builder()
+                .id(entity.getId())
+                .email(entity.getEmail())
+                .phone(entity.getPhone())
+                .passwordHash(entity.getPasswordHash())
+                .firstName(entity.getFirstName())
+                .lastName(entity.getLastName())
+                .middleName(entity.getMiddleName())
+                .role(entity.getRole())
+                .facilityId(entity.getFacilityId())
+                .status(entity.getStatus())
+                .build();
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/out/persistence/UserPersistenceAdapter.java ===
+package com.logistics.userauth.user.adapter.out.persistence;
+
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+
+@RequiredArgsConstructor
+@Component
+public class UserPersistenceAdapter implements UserRepository {
+
+    private final UserJpaRepository jpaRepo;
+    private final UserPersistenceMapper mapper;
+
+    @Override
+    public void save(User user) {
+        UserEntity entity = mapper.toEntity(user);
+        jpaRepo.save(entity);
+    }
+
+    @Override
+    public void delete(User user) {
+        UserEntity entity = mapper.toEntity(user);
+        jpaRepo.delete(entity);
+    }
+
+    @Override
+    public Optional<User> findById(Long id) {
+        return jpaRepo.findById(id).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<User> findByPhone(String phone) {
+        return jpaRepo.findByPhone(phone).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<User> findByEmail(String email) {
+        return jpaRepo.findByEmail(email).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<User> findByRole(UserRole role) {
+        return jpaRepo.findByRole(role).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<User> findByFacilityId(long id) {
+        return jpaRepo.findByFacilityId(id).map(mapper::toDomain);
+    }
+
+
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/out/persistence/UserEntity.java ===
+package com.logistics.userauth.user.adapter.out.persistence;
+
+import com.logistics.userauth.user.domain.UserRole;
+import com.logistics.userauth.user.domain.UserStatus;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(
+        name = "users",
+        schema = "user_management",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = "phone")
+        },
+        indexes = {
+                @Index(columnList = "email", name = "idx_users_email"),
+                @Index(columnList = "phone", name = "idx_users_phone"),
+                @Index(columnList = "role_name", name = "idx_users_role_name"),
+                @Index(columnList = "last_accessed_at", name = "idx_users_last_accessed"),
+                @Index(columnList = "facility_id", name = "idx_users_facility_id")
+        }
+)
+@Builder
+public class UserEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "users_seq")
+    @SequenceGenerator(
+            name = "users_seq",
+            sequenceName = "users_user_id_seq",
+            schema = "user_management",
+            allocationSize = 1
+    )
+    @Column(name = "user_id")
+    private Long id;
+
+    @Column(name = "email")
+    @Email
+    private String email;
+
+    @Column(name = "phone", nullable = false)
+    private String phone;
+
+    @Column(name = "password_hash")
+    private String passwordHash;
+
+    @Column(name = "first_name", nullable = false)
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false)
+    private String lastName;
+
+    @Column(name = "middle_name")
+    private String middleName;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role_name", nullable = false)
+    private UserRole role;
+
+    @Column(name = "facility_id")
+    private Long facilityId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "user_status")
+    private UserStatus status;
+
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
+
+    @Column(name = "last_accessed_at")
+    private LocalDateTime lastAccessedAt;
+
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/out/persistence/UserJpaRepository.java ===
+package com.logistics.userauth.user.adapter.out.persistence;
+
+import com.logistics.userauth.user.domain.UserRole;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface UserJpaRepository extends JpaRepository<UserEntity, Long> {
+
+    Optional<UserEntity> findByEmail(String email);
+
+    Optional<UserEntity> findByPhone(String phone);
+
+    Optional<UserEntity> findByRole(UserRole role);
+
+    Optional<UserEntity> findByFacilityId(long id);
+
+}
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/infrastructure/LogisticsUserDetails.java ===
+package com.logistics.userauth.user.infrastructure;
+
+import com.logistics.userauth.user.domain.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Component;
+
+import java.util.Collection;
+import java.util.List;
+
+@RequiredArgsConstructor
+public class LogisticsUserDetails implements UserDetails {
+
+    private final User user;
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+    }
+
+    @Override
+    public String getPassword() {
+        return user.getPasswordHash();
+    }
+
+    @Override
+    public String getUsername() {
+        return user.getPhone();
+    }
+
+    public Long getId() {
+        return user.getId();
+    }
+
+    @Override
+    public boolean isAccountNonExpired() { return true; }
+    @Override
+    public boolean isAccountNonLocked() { return true; }
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
+    @Override
+    public boolean isEnabled() { return true; }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/infrastructure/LogisticsUserDetailsService.java ===
+package com.logistics.userauth.user.infrastructure;
+
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import com.logistics.userauth.user.domain.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class LogisticsUserDetailsService implements UserDetailsService {
+
+    private final UserRepository userRepository;
+
+    @Override
+    public UserDetails loadUserByUsername(String phone) throws UsernameNotFoundException {
+        User user = userRepository.findByPhone(phone)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + phone));
+        return new LogisticsUserDetails(user);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/usecase/RegisterUserService.java ===
+package com.logistics.userauth.auth.jwt.application.usecase;
+
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.RegisterUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
+import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+import com.logistics.userauth.user.domain.UserStatus;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class RegisterUserService implements RegisterUserUseCase {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final TokenGeneratorPort tokenGenerator;
+
+
+    @Override
+    public JwtAuthenticationResponse register(RegisterUserCommand command) {
+        var user = User.builder()
+                .email(command.email())
+                .phone(command.phone())
+                .passwordHash(passwordEncoder.encode(command.rawPassword()))
+                .firstName(command.firstName())
+                .lastName(command.lastName())
+                .middleName(command.middleName())
+                .role(UserRole.CLIENT)
+                .status(UserStatus.ACTIVE)
+                .lastAccessedTime(LocalDateTime.now())
+                .build();
+
+        userRepository.save(user);
+
+        String token = tokenGenerator.generateAccessToken(user);
+        return new JwtAuthenticationResponse(token);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/usecase/AuthenticateUserService.java ===
+package com.logistics.userauth.auth.jwt.application.usecase;
+
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.AuthenticateUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
+import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class AuthenticateUserService implements AuthenticateUserUseCase {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final TokenGeneratorPort tokenGenerator;
+
+    @Override
+    public JwtAuthenticationResponse authenticate(AuthenticateUserCommand command) {
+        var user = userRepository.findByPhone(command.phone())
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+
+        if (!passwordEncoder.matches(command.password(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Invalid credentials");
+        }
+
+        var token = tokenGenerator.generateAccessToken(user);
+        return new JwtAuthenticationResponse(token);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/RegisterUserUseCase.java ===
+package com.logistics.userauth.auth.jwt.application.port.in;
+
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
+import com.logistics.userauth.user.adapter.in.web.dto.SignUpRequest;
+
+public interface RegisterUserUseCase {
+    JwtAuthenticationResponse register(RegisterUserCommand command);
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/AuthenticateUserUseCase.java ===
+package com.logistics.userauth.auth.jwt.application.port.in;
+
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
+import com.logistics.userauth.user.adapter.in.web.dto.SignInRequest;
+
+public interface AuthenticateUserUseCase {
+    JwtAuthenticationResponse authenticate(AuthenticateUserCommand command);
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/command/RegisterUserCommand.java ===
+package com.logistics.userauth.auth.jwt.application.port.in.command;
+
+public record RegisterUserCommand(
+        String email,
+        String phone,
+        String rawPassword,
+        String firstName,
+        String lastName,
+        String middleName
+) { }
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/command/AuthenticateUserCommand.java ===
+package com.logistics.userauth.auth.jwt.application.port.in.command;
+
+public record AuthenticateUserCommand (String phone, String password) {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/out/TokenGeneratorPort.java ===
+package com.logistics.userauth.auth.jwt.application.port.out;
+
+import com.logistics.userauth.user.domain.User;
+import org.springframework.stereotype.Component;
+
+public interface TokenGeneratorPort {
+    String generateAccessToken(User user);
+    boolean isTokenValid(String token);
+    Long extractUserId(String token);
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/adapter/in/security/JwtAuthenticationFilter.java ===
+package com.logistics.userauth.auth.jwt.adapter.in.security;
+
+import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.List;
+
+@Component
+@RequiredArgsConstructor
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    public static final String HEADER_NAME = "Authorization";
+    public static final String BEARER_PREFIX = "Bearer ";
+
+    private final TokenGeneratorPort tokenGenerator;
+    private final UserRepository userRepository;
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+
+        String authHeader = request.getHeader(HEADER_NAME);
+
+        if (!StringUtils.hasText(authHeader) || !authHeader.startsWith(BEARER_PREFIX)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String token = authHeader.substring(BEARER_PREFIX.length());
+
+        if (!tokenGenerator.isTokenValid(token)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        var userId = tokenGenerator.extractUserId(token);
+        if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            var userOpt = userRepository.findById(userId);
+            if (userOpt.isPresent()) {
+                var user = userOpt.get();
+                var authorities = List.of(new SimpleGrantedAuthority(user.getRole().name()));
+                var authToken = new UsernamePasswordAuthenticationToken(
+                                user, null, authorities
+                );
+
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource().buildDetails(request)
+                );
+
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path.startsWith("/auth/");
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/adapter/in/web/dto/JwtAuthenticationResponse.java ===
+package com.logistics.userauth.auth.jwt.adapter.in.web.dto;
+
+import lombok.Builder;
+
+@Builder
+public record JwtAuthenticationResponse (String token) {
+}
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/adapter/in/web/AuthController.java ===
+package com.logistics.userauth.auth.jwt.adapter.in.web;
+
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.AuthenticateUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.RegisterUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
+import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
+import com.logistics.userauth.user.adapter.in.web.dto.SignInRequest;
+import com.logistics.userauth.user.adapter.in.web.dto.SignUpRequest;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/auth")
+public class AuthController {
+    private final AuthenticateUserUseCase authenticateUserUseCase;
+    private final RegisterUserUseCase registerUserUseCase;
+
+    @PostMapping("/sign-in")
+    public ResponseEntity<JwtAuthenticationResponse> signIn(
+            @Valid @RequestBody SignInRequest request
+    ) {
+        var command = new AuthenticateUserCommand(
+                request.phone(),
+                request.password()
+        );
+        return ResponseEntity.ok(authenticateUserUseCase.authenticate(command));
+    }
+
+    @PostMapping("/register")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<JwtAuthenticationResponse> signUp(
+            @Valid @RequestBody SignUpRequest request
+    ) {
+        var command = new RegisterUserCommand(
+                request.email(),
+                request.phone(),
+                request.password(),
+                request.firstName(),
+                request.lastName(),
+                request.middleName()
+        );
+
+        return ResponseEntity.ok(registerUserUseCase.register(command));
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/adapter/out/JwtTokenProvider.java ===
+package com.logistics.userauth.auth.jwt.adapter.out;
+
+import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.user.domain.User;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Date;
+
+@Component
+@RequiredArgsConstructor
+public class JwtTokenProvider implements TokenGeneratorPort {
+
+    @Value("${app.jwt.secret}")
+    private String secret;
+
+    @Value("${app.jwt.expiration}")
+    private long accessTokenTtlSeconds;
+
+    @Override
+    public String generateAccessToken(User user) {
+        Instant now = Instant.now();
+        Instant expiry = now.plusSeconds(accessTokenTtlSeconds);
+
+        return Jwts.builder()
+                .subject(user.getId().toString())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiry))
+                .claim("phone", user.getPhone())
+                .claim("role", user.getRole().name())
+                .signWith(getSigningKey(), Jwts.SIG.HS256)
+                .compact();
+    }
+
+    @Override
+    public boolean isTokenValid(String token) {
+        try {
+            parseClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    @Override
+    public Long extractUserId(String token) {
+        Claims claims = parseClaims(token);
+        String sub = claims.getSubject();
+        return Long.valueOf(sub);
+    }
+
+    private SecretKey getSigningKey() {
+        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/infrastructure/security/SecurityConfiguration.java ===
+package com.logistics.userauth.auth.jwt.infrastructure.security;
+
+import com.logistics.userauth.auth.jwt.adapter.in.security.JwtAuthenticationFilter;
+import com.logistics.userauth.user.infrastructure.LogisticsUserDetailsService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
+public class SecurityConfiguration {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    private final LogisticsUserDetailsService userDetailsService;
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
+        http
+                // REST + JWT => CSRF обычно отключаем
+                .csrf(csrf -> csrf.disable())
+
+                // Сессии нам не нужны, работаем stateless
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // Настройки авторизации по URL
+                .authorizeHttpRequests(auth -> auth
+                        // эндпоинты авторизации/регистрации — без токена
+                        .requestMatchers("/auth/**").permitAll()
+                        // при необходимости добавь swagger / actuator и т.п.
+                        //.requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                        // всё остальное — только с валидным JWT
+                        .anyRequest().authenticated()
+                )
+
+                // Указываем, как аутентифицировать username/password (используется при логине)
+                .authenticationProvider(authenticationProvider())
+
+                // Регистрируем наш JWT-фильтр ПЕРЕД стандартным UsernamePasswordAuthenticationFilter
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        // сюда подложи свой UserDetailsService-адаптер поверх доменного UserRepository
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config)
+            throws Exception {
+        return config.getAuthenticationManager();
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/application/ports/out/UserSessionRepository.java ===
+package com.logistics.userauth.auth.session.application.ports.out;
+
+import com.logistics.userauth.auth.session.domain.UserSession;
+import com.logistics.userauth.user.domain.User;
+
+import java.util.Optional;
+
+public interface UserSessionRepository {
+    Optional<UserSession> findByUser(User user);
+
+    Optional<UserSession> findBySessionToken(String sessionToken);
+
+    void save(UserSession userSession);
+
+    void delete(UserSession userSession);
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/domain/UserSession.java ===
+package com.logistics.userauth.auth.session.domain;
+
+import com.logistics.userauth.user.domain.User;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class UserSession {
+
+    private long id;
+
+    private User user;
+
+    private String sessionToken;
+
+    private LocalDateTime createdAt;
+
+    private LocalDateTime expiresAt;
+
+    private Inet ipAddress;
+
+    private String userAgent;
+
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/adapter/in/UserSessionControllerMapper.java ===
+package com.logistics.userauth.auth.session.adapter.in;
+
+import com.logistics.userauth.auth.session.adapter.in.dto.UserSessionDTO;
+import com.logistics.userauth.auth.session.domain.UserSession;
+import org.springframework.stereotype.Component;
+
+@Component
+public class UserSessionControllerMapper {
+
+    public UserSession toUserSession(UserSessionDTO userSessionDTO) {
+        return UserSession.builder()
+                .createdAt(userSessionDTO.createdAt())
+                .ipAddress(userSessionDTO.ipAddress())
+                .userAgent(userSessionDTO.userAgent())
+                .expiresAt(userSessionDTO.expiresAt())
+                .build();
+    }
+
+    public UserSessionDTO toUserSessionDTO(UserSession userSession) {
+        return UserSessionDTO.builder()
+                .createdAt(userSession.getCreatedAt())
+                .ipAddress(userSession.getIpAddress())
+                .userAgent(userSession.getUserAgent())
+                .expiresAt(userSession.getExpiresAt())
+                .build();
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/adapter/in/dto/UserSessionDTO.java ===
+package com.logistics.userauth.auth.session.adapter.in.dto;
+
+
+import io.hypersistence.utils.hibernate.type.basic.Inet;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Builder
+public record UserSessionDTO (LocalDateTime createdAt,
+                              LocalDateTime expiresAt,
+                              Inet ipAddress,
+                              String userAgent) {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/adapter/out/persistence/UserSessionEntity.java ===
+package com.logistics.userauth.auth.session.adapter.out.persistence;
+
+import com.logistics.userauth.user.adapter.out.persistence.UserEntity;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
+import io.hypersistence.utils.hibernate.type.basic.PostgreSQLInetType;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Type;
+import org.springframework.data.annotation.CreatedDate;
+
+import java.time.LocalDateTime;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(
+        name = "user_sessions",
+        schema = "user_management",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = "session_token")
+        },
+        indexes = {
+                @Index(columnList = "user_id", name = "idx_user_sessions_user_id"),
+                @Index(columnList = "expires_at", name = "idx_user_sessions_expires_at")
+        }
+)
+@Builder
+public class UserSessionEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "user_sessions_seq")
+    @SequenceGenerator(
+            name = "user_sessions_seq",
+            sequenceName = "user_sessions_session_id_seq",
+            schema = "user_management",
+            allocationSize = 1
+    )
+    @Column(name = "session_id")
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private UserEntity user;
+
+    @Column(name = "session_token", nullable = false)
+    private String sessionToken;
+
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
+
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+
+    @Column(name = "ip_address", columnDefinition = "inet")
+    @Type(PostgreSQLInetType.class)
+    private Inet ipAddress;
+
+    @Column(name = "user_agent")
+    private String userAgent; // Браузер
+
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/adapter/out/persistence/UserSessionPersistenceMapper.java ===
+package com.logistics.userauth.auth.session.adapter.out.persistence;
+
+import com.logistics.userauth.auth.session.domain.UserSession;
+import com.logistics.userauth.user.adapter.out.persistence.UserPersistenceMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+@Component
+@RequiredArgsConstructor
+public class UserSessionPersistenceMapper {
+
+    private final UserPersistenceMapper upMapper;
+
+    public UserSession toDomain(UserSessionEntity entity) {
+        return UserSession.builder()
+                .id(entity.getId())
+                .user(upMapper.toDomain(entity.getUser()))
+                .expiresAt(entity.getExpiresAt())
+                .ipAddress(entity.getIpAddress())
+                .userAgent(entity.getUserAgent())
+                .createdAt(entity.getCreatedAt())
+                .sessionToken(entity.getSessionToken())
+                .build();
+    }
+
+    public UserSessionEntity toEntity(UserSession domain) {
+        return UserSessionEntity.builder()
+                .id(domain.getId())
+                .user(upMapper.toEntity(domain.getUser()))
+                .sessionToken(domain.getSessionToken())
+                .createdAt(domain.getCreatedAt())
+                .expiresAt(domain.getExpiresAt())
+                .ipAddress(domain.getIpAddress())
+                .userAgent(domain.getUserAgent())
+                .build();
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/adapter/out/persistence/UserSessionPersistenceAdapter.java ===
+package com.logistics.userauth.auth.session.adapter.out.persistence;
+
+import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.domain.UserSession;
+import com.logistics.userauth.user.domain.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.Optional;
+
+@Component
+@RequiredArgsConstructor
+public class UserSessionPersistenceAdapter implements UserSessionRepository {
+
+    private final UserSessionJpaRepository jpaRepo;
+    private final UserSessionPersistenceMapper mapper;
+
+    @Override
+    public Optional<UserSession> findByUser(User user) {
+        return jpaRepo.findByUser(user).map(mapper::toDomain);
+    }
+
+    @Override
+    public Optional<UserSession> findBySessionToken(String sessionToken) {
+        return jpaRepo.findBySessionToken(sessionToken).map(mapper::toDomain);
+    }
+
+    @Override
+    public void save(UserSession userSession) {
+        UserSessionEntity entity = mapper.toEntity(userSession);
+        jpaRepo.save(entity);
+    }
+
+    @Override
+    public void delete(UserSession userSession) {
+        UserSessionEntity entity = mapper.toEntity(userSession);
+        jpaRepo.delete(entity);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/adapter/out/persistence/UserSessionJpaRepository.java ===
+package com.logistics.userauth.auth.session.adapter.out.persistence;
+
+import com.logistics.userauth.user.domain.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+@Repository
+public interface UserSessionJpaRepository extends JpaRepository<UserSessionEntity, Long> {
+    Optional<UserSessionEntity> findByUser(User user);
+
+    Optional<UserSessionEntity> findBySessionToken(String sessionToken);
+
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/UserAuthServiceApplicationTests.java ===
+package com.logistics.userauth;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+@IntegrationTest
+@DisplayName("Тесты загрузки контекста для UserAuth Service")
+class UserAuthServiceApplicationTests {
+
+    @Test
+    @DisplayName("Должен успешно загрузить контекст приложения")
+    void contextLoads() {
+        // Проверяет, что все модули корректно интегрируются
+    }
+}
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/IntegrationTest.java ===
+package com.logistics.userauth;
+
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Testcontainers
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@ActiveProfiles("test")
+public @interface IntegrationTest {
+}
+
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/audit/adapter/out/persistence/AuditLogPersistenceMapperTest.java ===
+package com.logistics.userauth.audit.adapter.out.persistence;
+
+import com.logistics.shared.audit_action.domain.AuditActionType;
+import com.logistics.shared.audit_action.persistence.AuditActionTypeEntity;
+import com.logistics.shared.audit_action.persistence.AuditActionTypeMapper;
+import com.logistics.userauth.audit.domain.AuditLog;
+import com.logistics.userauth.user.adapter.out.persistence.UserEntity;
+import com.logistics.userauth.user.adapter.out.persistence.UserPersistenceMapper;
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("Тесты для AuditLogPersistenceMapper")
+class AuditLogPersistenceMapperTest {
+
+    @Mock
+    private AuditActionTypeMapper actionTypeMapper;
+
+    @Mock
+    private UserPersistenceMapper userMapper;
+
+    @InjectMocks
+    private AuditLogPersistenceMapper mapper;
+
+    private User testUser;
+    private UserEntity testUserEntity;
+    private AuditActionType testActionType;
+    private AuditActionTypeEntity testActionTypeEntity;
+
+    @BeforeEach
+    void setUp() {
+        testUser = User.builder().id(1L).firstName("Test").lastName("User").role(UserRole.CLIENT).build();
+        testUserEntity = UserEntity.builder().id(1L).firstName("Test").lastName("User").role(UserRole.CLIENT).build();
+        testActionType = AuditActionType.builder().id((short) 1).actionName("USER_LOGIN").build();
+        testActionTypeEntity = AuditActionTypeEntity.builder().id((short) 1).actionName("USER_LOGIN").build();
+    }
+
+    @Test
+    @DisplayName("Должен корректно преобразовать Domain в Entity")
+    void shouldMapDomainToEntity() {
+        // Given
+        Map<String, Object> newValues = new HashMap<>();
+        newValues.put("status", "active");
+        AuditLog domain = AuditLog.builder()
+                .id(1L)
+                .user(testUser)
+                .actionType(testActionType)
+                .tableName("users")
+                .newValues(newValues)
+                .build();
+        when(userMapper.toEntity(any(User.class))).thenReturn(testUserEntity);
+        when(actionTypeMapper.toEntity(any(AuditActionType.class))).thenReturn(testActionTypeEntity);
+
+        // When
+        AuditLogEntity entity = mapper.toEntity(domain);
+
+        // Then
+        assertThat(entity).isNotNull();
+        assertThat(entity.getId()).isEqualTo(1L);
+        assertThat(entity.getUser()).isEqualTo(testUserEntity);
+        assertThat(entity.getActionType()).isEqualTo(testActionTypeEntity);
+        assertThat(entity.getNewValues()).containsEntry("status", "active");
+    }
+
+    @Test
+    @DisplayName("Должен корректно преобразовать Entity в Domain")
+    void shouldMapEntityToDomain() {
+        // Given
+        Map<String, Object> newValues = new HashMap<>();
+        newValues.put("role", "COURIER");
+        AuditLogEntity entity = AuditLogEntity.builder()
+                .id(2L)
+                .user(testUserEntity)
+                .actionType(testActionTypeEntity)
+                .tableName("users")
+                .recordId(100L)
+                .newValues(newValues)
+                .build();
+        when(userMapper.toDomain(any(UserEntity.class))).thenReturn(testUser);
+        when(actionTypeMapper.toDomain(any(AuditActionTypeEntity.class))).thenReturn(testActionType);
+
+        // When
+        AuditLog domain = mapper.toDomain(entity);
+
+        // Then
+        assertThat(domain).isNotNull();
+        assertThat(domain.getId()).isEqualTo(2L);
+        assertThat(domain.getUser()).isEqualTo(testUser);
+        assertThat(domain.getActionType()).isEqualTo(testActionType);
+        assertThat(domain.getNewValues()).containsEntry("role", "COURIER");
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/audit/adapter/out/persistence/AuditLogJpaRepositoryIntegrationTest.java ===
+package com.logistics.userauth.audit.adapter.out.persistence;
+
+import com.logistics.shared.audit_action.persistence.AuditActionJpaRepository;
+import com.logistics.shared.audit_action.persistence.AuditActionTypeEntity;
+import com.logistics.userauth.IntegrationTest;
+import com.logistics.userauth.user.adapter.out.persistence.UserEntity;
+import com.logistics.userauth.user.adapter.out.persistence.UserJpaRepository;
+import com.logistics.userauth.user.domain.UserRole;
+import com.logistics.userauth.user.domain.UserStatus;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
+import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@IntegrationTest
+@DisplayName("Интеграционные тесты для AuditLogJpaRepository")
+class AuditLogJpaRepositoryIntegrationTest {
+    @Autowired
+    private AuditLogJpaRepository repository;
+
+    @Autowired
+    private UserJpaRepository userRepository;
+
+    @Autowired
+    private AuditActionJpaRepository actionTypeRepository;
+
+    private UserEntity testUser;
+    private AuditActionTypeEntity testActionType;
+
+    @BeforeEach
+    void setUp() {
+        // Создаём тестового пользователя
+        testUser = UserEntity.builder()
+                .phone("+79991111111")
+                .firstName("Test")
+                .lastName("User")
+                .role(UserRole.CLIENT)
+                .status(UserStatus.ACTIVE)
+                .build();
+
+        testUser = userRepository.save(testUser);
+
+        // Создаём тип действия
+        testActionType = AuditActionTypeEntity.builder()
+                .actionName("TEST_ACTION")
+                .category("TEST")
+                .description("Test action")
+                .build();
+
+        testActionType = actionTypeRepository.save(testActionType);
+    }
+
+    @Test
+    @DisplayName("Контекст загружается успешно")
+    void contextLoads() {
+        assertThat(repository).isNotNull();
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Должен сохранить и найти лог аудита по пользователю")
+    void shouldSaveAndFindByUser() {
+        // Given
+        Map<String, Object> newValues = new HashMap<>();
+        newValues.put("field", "value");
+
+        Inet in = new Inet("192.168.1.1");
+
+        AuditLogEntity auditLog = AuditLogEntity.builder()
+                .user(testUser)
+                .actionType(testActionType)
+                .tableName("test_table")
+                .recordId(1L)
+                .actorIdentifier("test@example.com")
+                .newValues(newValues)
+                .performedAt(LocalDateTime.now())
+                .ipAddress(in)
+                .build();
+
+        // When
+        repository.save(auditLog);
+
+        // Then
+        List<AuditLogEntity> found = repository.findByUser(testUser);
+
+        assertThat(found).isNotEmpty();
+        assertThat(found.get(0).getActionType()).isEqualTo(testActionType);
+        assertThat(found.get(0).getTableName()).isEqualTo("test_table");
+        assertThat(found.get(0).getRecordId()).isEqualTo(1L);
+        assertThat(found.get(0).getActorIdentifier()).isEqualTo("test@example.com");
+        assertThat(found.get(0).getNewValues()).isEqualTo(newValues);
+        assertThat(found.get(0).getIpAddress()).isEqualTo(in);
+    }
+
+    @Test
+    @DisplayName("Должен сохранить лог аудита с корректными данными")
+    void shouldSaveAuditLogWithCorrectData() {
+        // Given
+        Map<String, Object> newValues = new HashMap<>();
+        newValues.put("status", "COMPLETED");
+        newValues.put("amount", 1500.50);
+
+        Inet in = new Inet("192.168.1.1");
+
+        AuditLogEntity auditLog = AuditLogEntity.builder()
+                .user(testUser)
+                .actionType(testActionType)
+                .tableName("orders")
+                .recordId(999L)
+                .actorIdentifier("admin@example.com")
+                .newValues(newValues)
+                .performedAt(LocalDateTime.now())
+                .ipAddress(in)
+                .build();
+
+        // When
+        AuditLogEntity saved = repository.save(auditLog);
+
+        // Then
+        assertThat(saved.getId()).isNotNull();
+        assertThat(saved.getNewValues()).containsEntry("status", "COMPLETED");
+        assertThat(saved.getNewValues()).containsEntry("amount", 1500.50);
+    }
+}
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/user/adapter/out/persistence/UserPersistenceAdapterIntegrationTest.java ===
+package com.logistics.userauth.user.adapter.out.persistence;
+
+import com.logistics.userauth.IntegrationTest;
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+import com.logistics.userauth.user.domain.UserStatus;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@IntegrationTest
+@Transactional
+@DisplayName("Интеграционные тесты для UserPersistenceAdapter")
+class UserPersistenceAdapterIntegrationTest {
+
+    @Autowired
+    private UserPersistenceAdapter adapter;
+
+    @Test
+    @DisplayName("Должен сохранить и получить пользователя")
+    void shouldSaveAndRetrieveUser() {
+        // Given
+        User user = User.builder().email("adapter@test.com").phone("+79993333333").passwordHash("hashed123").firstName("Adapter").lastName("Test").role(UserRole.DISPATCHER).status(UserStatus.ACTIVE).lastAccessedTime(LocalDateTime.now()).build();
+
+        // When
+        adapter.save(user);
+
+        // Then
+        Optional<User> found = adapter.findByEmail("adapter@test.com");
+        assertThat(found).isPresent();
+        assertThat(found.get().getPhone()).isEqualTo("+79993333333");
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/user/adapter/out/persistence/UserJpaRepositoryIntegrationTest.java ===
+package com.logistics.userauth.user.adapter.out.persistence;
+
+import com.logistics.userauth.IntegrationTest;
+import com.logistics.userauth.user.domain.UserRole;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@IntegrationTest
+@DisplayName("Интеграционные тесты для UserJpaRepository")
+class UserJpaRepositoryIntegrationTest {
+
+    @Autowired
+    private UserJpaRepository repository;
+
+    @Test
+    @DisplayName("Контекст загружается успешно")
+    void contextLoads() {
+        assertThat(repository).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Должен сохранить и найти User по ID")
+    void shouldSaveAndFindById() {
+        // Given
+        UserEntity entity = UserEntity.builder()
+                .email("test@example.com")
+                .phone("1234567890")
+                .passwordHash("hashedpassword")
+                .firstName("John")
+                .lastName("Doe")
+                .role(UserRole.CLIENT)
+                .build();
+
+        UserEntity savedEntity = repository.save(entity);
+
+        // When
+        Optional<UserEntity> found = repository.findById(savedEntity.getId());
+
+        // Then
+        assertThat(found).isPresent();
+        assertThat(found.get().getEmail()).isEqualTo("test@example.com");
+        assertThat(found.get().getId()).isEqualTo(savedEntity.getId());
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/user/adapter/out/persistence/UserPersistenceMapperTest.java ===
+package com.logistics.userauth.user.adapter.out.persistence;
+
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+import com.logistics.userauth.user.domain.UserStatus;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+
+import java.time.LocalDateTime;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DisplayName("Тесты для UserPersistenceMapper")
+class UserPersistenceMapperTest {
+
+    private UserPersistenceMapper mapper;
+
+    @BeforeEach
+    void setUp() {
+        mapper = new UserPersistenceMapper();
+    }
+
+    @Test
+    @DisplayName("Должен корректно преобразовать Domain в Entity")
+    void shouldMapDomainToEntity() {
+        // Given
+        User domain = User.builder()
+                .id(1L)
+                .email("test@example.com")
+                .phone("+79991234567")
+                .passwordHash("hashedPassword123")
+                .firstName("Иван")
+                .lastName("Иванов")
+                .middleName("Иванович")
+                .role(UserRole.CLIENT)
+                .facilityId(100L)
+                .status(UserStatus.ACTIVE)
+                .lastAccessedTime(LocalDateTime.now())
+                .build();
+
+        // When
+        UserEntity entity = mapper.toEntity(domain);
+
+        // Then
+        assertThat(entity).isNotNull();
+        assertThat(entity.getId()).isEqualTo(1L);
+        assertThat(entity.getEmail()).isEqualTo("test@example.com");
+        assertThat(entity.getRole()).isEqualTo(UserRole.CLIENT);
+    }
+
+    @Test
+    @DisplayName("Должен корректно преобразовать Entity в Domain")
+    void shouldMapEntityToDomain() {
+        // Given
+        UserEntity entity = UserEntity.builder()
+                .id(2L)
+                .email("courier@example.com")
+                .phone("+79997654321")
+                .passwordHash("hashedPassword456")
+                .firstName("Петр")
+                .lastName("Петров")
+                .role(UserRole.COURIER)
+                .facilityId(200L)
+                .status(UserStatus.ACTIVE)
+                .build();
+
+        // When
+        User domain = mapper.toDomain(entity);
+
+        // Then
+        assertThat(domain).isNotNull();
+        assertThat(domain.getId()).isEqualTo(2L);
+        assertThat(domain.getEmail()).isEqualTo("courier@example.com");
+        assertThat(domain.getRole()).isEqualTo(UserRole.COURIER);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/auth/session/adapter/out/persistence/UserSessionJpaRepositoryIntegrationTest.java ===
+package com.logistics.userauth.auth.session.adapter.out.persistence;
+
+import com.logistics.userauth.IntegrationTest;
+import com.logistics.userauth.user.adapter.out.persistence.UserEntity;
+import com.logistics.userauth.user.adapter.out.persistence.UserJpaRepository;
+import com.logistics.userauth.user.domain.UserRole;
+import com.logistics.userauth.user.domain.UserStatus;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
+import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@IntegrationTest
+@DisplayName("Интеграционные тесты для UserSessionJpaRepository")
+class UserSessionJpaRepositoryIntegrationTest {
+
+    @Autowired
+    private UserSessionJpaRepository repository;
+
+    @Autowired
+    private UserJpaRepository userRepository;
+
+    private UserEntity testUser;
+
+    @BeforeEach
+    void setUp() {
+        // Создаём и сохраняем тестового пользователя
+        testUser = UserEntity.builder()
+                .phone("+79992222222")
+                .firstName("Session")
+                .lastName("User")
+                .role(UserRole.CLIENT)
+                .status(UserStatus.ACTIVE)
+                .build();
+
+        testUser = userRepository.save(testUser);
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Контекст загружается успешно")
+    void contextLoads() {
+        assertThat(repository).isNotNull();
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Должен сохранить и найти сессию по токену")
+    void shouldSaveAndFindBySessionToken() {
+
+        Inet in = new Inet("192.168.1.10");
+        // Given
+        UserSessionEntity session = UserSessionEntity.builder()
+                .user(testUser)
+                .sessionToken("unique-token-12345")
+                .expiresAt(LocalDateTime.now().plusHours(2))
+                .createdAt(LocalDateTime.now())
+                .ipAddress(in)
+                .userAgent("Mozilla/5.0")
+                .build();
+
+        // When
+        repository.save(session);
+
+        // Then
+        Optional<UserSessionEntity> found = repository.findBySessionToken("unique-token-12345");
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getUser()).isEqualTo(testUser);
+        assertThat(found.get().getIpAddress()).isEqualTo(in);
+        assertThat(found.get().getUserAgent()).isEqualTo("Mozilla/5.0");
+    }
+
+    @Test
+    @Transactional
+    @DisplayName("Должен вернуть пустой Optional для несуществующего токена")
+    void shouldReturnEmptyForNonExistentToken() {
+        // When
+        Optional<UserSessionEntity> found = repository.findBySessionToken("non-existent-token");
+
+        // Then
+        assertThat(found).isEmpty();
+    }
+}
+
+

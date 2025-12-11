@@ -31,6 +31,8 @@ public class User {
 
     private Long facilityId;
 
+    private LocalDateTime createdTime;
+
     private LocalDateTime lastAccessedTime;
 
     private UserStatus status;

@@ -23,7 +23,13 @@ import lombok.NoArgsConstructor;
 )
 public class AuditActionTypeEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "audit_action_type_seq")
+    @SequenceGenerator(
+            name = "audit_action_type_seq",
+            sequenceName = "audit_action_types_action_type_id_seq",
+            schema = "shared_data",
+            allocationSize = 1
+    )
     @Column(name = "action_type_id")
     private Short id;
 
