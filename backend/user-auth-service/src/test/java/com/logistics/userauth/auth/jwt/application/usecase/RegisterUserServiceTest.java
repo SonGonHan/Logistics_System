@@ -2,6 +2,7 @@ package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.IntegrationTest;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
 import com.logistics.userauth.user.application.port.out.UserRepository;
@@ -23,7 +24,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Тесты для RegisterUserService")
+@DisplayName("RegisterUserService: юнит-тесты")
 public class RegisterUserServiceTest {
 
 
@@ -36,6 +37,9 @@ public class RegisterUserServiceTest {
     @Mock
     private TokenGeneratorPort tokenGenerator;
 
+    @Mock
+    private InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
+
     @InjectMocks
     private RegisterUserService service;
 
@@ -43,14 +47,16 @@ public class RegisterUserServiceTest {
     @DisplayName("Должен зарегистрировать пользователя и вернуть JWT-токен")
     void shouldRegisterUserAndReturnJwt() {
         // given
-        var command = new RegisterUserCommand(
-                "test@example.com",
-                "79991234567",
-                "rawPass",
-                "Ivan",
-                "Ivanov",
-                "Ivanovich"
-        );
+        var command = RegisterUserCommand.builder()
+                .email("test@example.com")
+                .phone("79991234567")
+                .rawPassword("rawPass")
+                .firstName("Ivan")
+                .lastName("Ivanov")
+                .middleName("Ivanovich")
+                .ipAddress("192.168.1.1")
+                .userAgent("Mozilla/5.0")
+                .build();
 
         var savedUser = User.builder()
                 .id(1L)
@@ -66,14 +72,17 @@ public class RegisterUserServiceTest {
 
         when(passwordEncoder.encode("rawPass")).thenReturn("encodedPass");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(tokenGenerator.generateAccessToken(savedUser)).thenReturn("jwt-token");
-
+        when(tokenGenerator.generateAccessToken(savedUser)).thenReturn("access-token");
+        when(createRefreshTokenUseCase.create(any())).thenReturn("refresh-token");
         // when
         var response = service.register(command);
 
         // then
-        assertEquals("jwt-token", response.token());
+        assertThat(response.accessToken()).isEqualTo("access-token");
+        assertThat(response.refreshToken()).isEqualTo("refresh-token");
+
         verify(userRepository).save(any(User.class));
         verify(tokenGenerator).generateAccessToken(savedUser);
+        verify(createRefreshTokenUseCase).create(any());
     }
 }

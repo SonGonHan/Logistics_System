@@ -15,11 +15,12 @@ public class UserSessionPersistenceMapper {
         return UserSession.builder()
                 .id(entity.getId())
                 .user(upMapper.toDomain(entity.getUser()))
+                .refreshToken(entity.getRefreshToken())
                 .expiresAt(entity.getExpiresAt())
                 .ipAddress(entity.getIpAddress())
+                .revoked(entity.isRevoked())
                 .userAgent(entity.getUserAgent())
                 .createdAt(entity.getCreatedAt())
-                .sessionToken(entity.getSessionToken())
                 .build();
     }
 
@@ -27,9 +28,10 @@ public class UserSessionPersistenceMapper {
         return UserSessionEntity.builder()
                 .id(domain.getId())
                 .user(upMapper.toEntity(domain.getUser()))
-                .sessionToken(domain.getSessionToken())
+                .refreshToken(domain.getRefreshToken())
                 .createdAt(domain.getCreatedAt())
                 .expiresAt(domain.getExpiresAt())
+                .revoked(domain.isRevoked())
                 .ipAddress(domain.getIpAddress())
                 .userAgent(domain.getUserAgent())
                 .build();

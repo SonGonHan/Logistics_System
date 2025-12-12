@@ -92,7 +92,7 @@ CREATE TABLE user_management.users (
                                        user_id BIGSERIAL PRIMARY KEY,
                                        email VARCHAR(255),
                                        phone VARCHAR(20) NOT NULL UNIQUE,
-                                       password VARCHAR(255),
+                                       password_hash VARCHAR(255),
                                        first_name VARCHAR(100) NOT NULL,
                                        last_name VARCHAR(100) NOT NULL,
                                        middle_name VARCHAR(100),
@@ -120,9 +120,9 @@ CREATE TABLE user_management.users (
                                                )
                                            ),
                                        CONSTRAINT check_auth_data CHECK (
-                                           (role_name IN ('UNREGISTERED_CONTACT', 'SYSTEM') AND password IS NULL)
+                                           (role_name IN ('UNREGISTERED_CONTACT', 'SYSTEM') AND password_hash IS NULL)
                                                OR
-                                           (role_name NOT IN ('UNREGISTERED_CONTACT', 'SYSTEM') AND password IS NOT NULL AND email IS NOT NULL)
+                                           (role_name NOT IN ('UNREGISTERED_CONTACT', 'SYSTEM') AND password_hash IS NOT NULL AND email IS NOT NULL)
                                            )
 );
 
@@ -132,9 +132,10 @@ COMMENT ON COLUMN user_management.users.role_name IS 'UNREGISTERED_CONTACT - Ð½Ð
 CREATE TABLE user_management.user_sessions (
                                                session_id BIGSERIAL PRIMARY KEY,
                                                user_id BIGINT NOT NULL REFERENCES user_management.users(user_id) ON DELETE CASCADE,
-                                               session_token VARCHAR(255) NOT NULL UNIQUE,
+                                               refresh_token VARCHAR(255) NOT NULL UNIQUE,
                                                expires_at TIMESTAMP NOT NULL,
                                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                                               revoked BOOLEAN DEFAULT FALSE,
                                                ip_address INET,
                                                user_agent TEXT
 );

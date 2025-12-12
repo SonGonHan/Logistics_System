@@ -1,6 +1,7 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
 import com.logistics.userauth.user.application.port.out.UserRepository;
@@ -22,10 +23,11 @@ import java.util.Optional;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Тесты для AuthenticateUserService")
+@DisplayName("AuthenticateUserService: юнит-тесты")
 public class AuthenticateUserServiceTest {
 
     @Mock
@@ -36,6 +38,9 @@ public class AuthenticateUserServiceTest {
 
     @Mock
     private TokenGeneratorPort tokenGenerator;
+
+    @Mock
+    private InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
 
     @InjectMocks
     private AuthenticateUserService service;
@@ -59,33 +64,40 @@ public class AuthenticateUserServiceTest {
     @DisplayName("Должен аутентифицировать пользователя и вернуть JWT")
     void shouldAuthenticateUserAndReturnJwt() {
         // given
-        var command = new AuthenticateUserCommand(
-                "79991234567",
-                "Password123!"
-        );
+        var command = AuthenticateUserCommand.builder()
+                .phone("79991234567")
+                .password("Password123!")
+                .ipAddress("192.168.1.10")
+                .userAgent("Mozilla")
+                .build();
 
         var user = buildUser();
 
         when(userRepository.findByPhone("79991234567")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("Password123!", "HASH")).thenReturn(true);
         when(tokenGenerator.generateAccessToken(any(User.class))).thenReturn("jwt-token");
-
+        when(createRefreshTokenUseCase.create(any())).thenReturn("refresh-token");
         // when
         JwtAuthenticationResponse response = service.authenticate(command);
 
         // then
         assertThat(response).isNotNull();
-        assertThat(response.token()).isEqualTo("jwt-token");
+        assertThat(response.accessToken()).isEqualTo("jwt-token");
+        assertThat(response.refreshToken()).isEqualTo("refresh-token");
+
+        verify(createRefreshTokenUseCase).create(any());
     }
 
     @Test
     @DisplayName("Должен бросить BadCredentialsException при неверном пароле")
     void shouldThrowWhenPasswordInvalid() {
         // given
-        var command = new AuthenticateUserCommand(
-                "79991234567",
-                "wrong"
-        );
+        var command = AuthenticateUserCommand.builder()
+                .phone("79991234567")
+                .password("wrong")
+                .ipAddress("192.168.1.10")
+                .userAgent("Mozilla")
+                .build();
 
         var user = buildUser();
 
@@ -101,10 +113,12 @@ public class AuthenticateUserServiceTest {
     @DisplayName("Должен бросить BadCredentialsException, если пользователь не найден")
     void shouldThrowWhenUserNotFound() {
         // given
-        var command = new AuthenticateUserCommand(
-                "79990000000",
-                "Password123!"
-        );
+        var command = AuthenticateUserCommand.builder()
+                .phone("79990000000")
+                .password("Password123!")
+                .ipAddress("192.168.1.10")
+                .userAgent("Mozilla")
+                .build();
 
         when(userRepository.findByPhone("79990000000")).thenReturn(Optional.empty());
 

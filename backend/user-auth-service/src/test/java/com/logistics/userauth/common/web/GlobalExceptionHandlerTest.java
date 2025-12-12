@@ -1,5 +1,6 @@
 package com.logistics.userauth.common.web;
 
+import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -74,5 +75,56 @@ class GlobalExceptionHandlerTest {
         @SuppressWarnings("unchecked")
         Map<String, String> fields = (Map<String, String>) response.getBody().get("fields");
         assertThat(fields).containsEntry("phone", "Неверный формат телефона");
+    }
+
+    @Test
+    @DisplayName("Должен обработать InvalidRefreshTokenException и вернуть 401")
+    void shouldHandleInvalidRefreshToken() {
+        // Given
+        var exception = new InvalidRefreshTokenException("Invalid refresh token");
+
+        // When
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleInvalidRefreshToken(exception);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("error")).isEqualTo("INVALID_REFRESH_TOKEN");
+        assertThat(response.getBody().get("message")).isEqualTo("Invalid refresh token");
+    }
+
+    @Test
+    @DisplayName("Должен обработать InvalidRefreshTokenException с сообщением об истечении срока")
+    void shouldHandleExpiredRefreshToken() {
+        // Given
+        var exception = new InvalidRefreshTokenException("Refresh token has expired");
+
+        // When
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleInvalidRefreshToken(exception);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("error")).isEqualTo("INVALID_REFRESH_TOKEN");
+        assertThat(response.getBody().get("message")).isEqualTo("Refresh token has expired");
+    }
+
+    @Test
+    @DisplayName("Должен обработать InvalidRefreshTokenException с сообщением об отзыве")
+    void shouldHandleRevokedRefreshToken() {
+        // Given
+        var exception = new InvalidRefreshTokenException("Refresh token has been revoked");
+
+        // When
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleInvalidRefreshToken(exception);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("error")).isEqualTo("INVALID_REFRESH_TOKEN");
+        assertThat(response.getBody().get("message")).isEqualTo("Refresh token has been revoked");
     }
 }

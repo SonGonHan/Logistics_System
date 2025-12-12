@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
 @Transactional
-@DisplayName("Интеграционные тесты для UserPersistenceAdapter")
+@DisplayName("UserPersistenceAdapter: интеграционные тесты")
 class UserPersistenceAdapterIntegrationTest {
 
     @Autowired

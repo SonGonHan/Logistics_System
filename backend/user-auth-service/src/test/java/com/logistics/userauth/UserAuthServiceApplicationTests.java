@@ -4,7 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @IntegrationTest
-@DisplayName("Тесты загрузки контекста для UserAuth Service")
+@DisplayName("UserAuth Service: тесты загрузки контекста")
 class UserAuthServiceApplicationTests {
 
     @Test

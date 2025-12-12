@@ -11,17 +11,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
-@DisplayName("Интеграционные тесты для UserJpaRepository")
+@DisplayName("UserJpaRepository: интеграционные тесты")
 class UserJpaRepositoryIntegrationTest {
 
     @Autowired
     private UserJpaRepository repository;
-
-    @Test
-    @DisplayName("Контекст загружается успешно")
-    void contextLoads() {
-        assertThat(repository).isNotNull();
-    }
 
     @Test
     @DisplayName("Должен сохранить и найти User по ID")

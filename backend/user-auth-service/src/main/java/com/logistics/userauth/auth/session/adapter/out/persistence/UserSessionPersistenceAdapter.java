@@ -21,8 +21,8 @@ public class UserSessionPersistenceAdapter implements UserSessionRepository {
     }
 
     @Override
-    public Optional<UserSession> findBySessionToken(String sessionToken) {
-        return jpaRepo.findBySessionToken(sessionToken).map(mapper::toDomain);
+    public Optional<UserSession> findByRefreshToken(String refreshToken) {
+        return jpaRepo.findByRefreshToken(refreshToken).map(mapper::toDomain);
     }
 
     @Override

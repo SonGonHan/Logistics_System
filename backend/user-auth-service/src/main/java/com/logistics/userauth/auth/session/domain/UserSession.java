@@ -19,7 +19,7 @@ public class UserSession {
 
     private User user;
 
-    private String sessionToken;
+    private String refreshToken;
 
     private LocalDateTime createdAt;
 
@@ -28,5 +28,7 @@ public class UserSession {
     private Inet ipAddress;
 
     private String userAgent;
+
+    private boolean revoked;
 
 }

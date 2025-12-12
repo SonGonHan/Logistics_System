@@ -1,5 +1,6 @@
 package com.logistics.userauth.common.web;
 
+import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,5 +43,13 @@ public class GlobalExceptionHandler {
         body.put("error", "VALIDATION_FAILED");
         body.put("fields", fieldErrors);
         return ResponseEntity.badRequest().body(body);
+    }
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "INVALID_REFRESH_TOKEN");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 }

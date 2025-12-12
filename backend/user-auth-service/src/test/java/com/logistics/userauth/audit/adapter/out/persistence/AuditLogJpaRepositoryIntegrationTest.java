@@ -22,7 +22,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
-@DisplayName("Интеграционные тесты для AuditLogJpaRepository")
+@DisplayName("AuditLogJpaRepository: интеграционные тесты")
 class AuditLogJpaRepositoryIntegrationTest {
     @Autowired
     private AuditLogJpaRepository repository;
@@ -57,12 +57,6 @@ class AuditLogJpaRepositoryIntegrationTest {
                 .build();
 
         testActionType = actionTypeRepository.save(testActionType);
-    }
-
-    @Test
-    @DisplayName("Контекст загружается успешно")
-    void contextLoads() {
-        assertThat(repository).isNotNull();
     }
 
     @Test

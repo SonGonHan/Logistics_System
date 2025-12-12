@@ -8,7 +8,7 @@ import java.util.Optional;
 public interface UserSessionRepository {
     Optional<UserSession> findByUser(User user);
 
-    Optional<UserSession> findBySessionToken(String sessionToken);
+    Optional<UserSession> findByRefreshToken(String refreshToken);
 
     void save(UserSession userSession);
 

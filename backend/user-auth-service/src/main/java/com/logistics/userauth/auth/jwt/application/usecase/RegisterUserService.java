@@ -1,7 +1,9 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.RegisterUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
 import com.logistics.userauth.user.application.port.out.UserRepository;
@@ -20,7 +22,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenGeneratorPort tokenGenerator;
-
+    private final InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
 
     @Override
     public JwtAuthenticationResponse register(RegisterUserCommand command) {
@@ -39,7 +41,15 @@ public class RegisterUserService implements RegisterUserUseCase {
 
         var saved = userRepository.save(user);
 
-        String token = tokenGenerator.generateAccessToken(saved);
-        return new JwtAuthenticationResponse(token);
+        var accessToken = tokenGenerator.generateAccessToken(saved);
+
+        var refreshToken = createRefreshTokenUseCase.create(
+                CreateRefreshTokenCommand.builder()
+                        .userId(saved.getId())
+                        .ipAddress(command.ipAddress())
+                        .userAgent(command.userAgent())
+                        .build()
+        );
+        return new JwtAuthenticationResponse(accessToken, refreshToken);
     }
 }

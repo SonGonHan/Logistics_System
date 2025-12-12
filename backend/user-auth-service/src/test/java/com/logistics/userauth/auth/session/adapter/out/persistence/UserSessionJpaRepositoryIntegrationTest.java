@@ -18,7 +18,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
-@DisplayName("Интеграционные тесты для UserSessionJpaRepository")
+@DisplayName("UserSessionJpaRepository: интеграционные тесты")
 class UserSessionJpaRepositoryIntegrationTest {
 
     @Autowired
@@ -45,21 +45,14 @@ class UserSessionJpaRepositoryIntegrationTest {
 
     @Test
     @Transactional
-    @DisplayName("Контекст загружается успешно")
-    void contextLoads() {
-        assertThat(repository).isNotNull();
-    }
-
-    @Test
-    @Transactional
     @DisplayName("Должен сохранить и найти сессию по токену")
-    void shouldSaveAndFindBySessionToken() {
+    void shouldSaveAndFindByRefreshToken() {
 
         Inet in = new Inet("192.168.1.10");
         // Given
         UserSessionEntity session = UserSessionEntity.builder()
                 .user(testUser)
-                .sessionToken("unique-token-12345")
+                .refreshToken("unique-token-12345")
                 .expiresAt(LocalDateTime.now().plusHours(2))
                 .createdAt(LocalDateTime.now())
                 .ipAddress(in)
@@ -70,7 +63,7 @@ class UserSessionJpaRepositoryIntegrationTest {
         repository.save(session);
 
         // Then
-        Optional<UserSessionEntity> found = repository.findBySessionToken("unique-token-12345");
+        Optional<UserSessionEntity> found = repository.findByRefreshToken("unique-token-12345");
 
         assertThat(found).isPresent();
         assertThat(found.get().getUser()).isEqualTo(testUser);
@@ -83,7 +76,7 @@ class UserSessionJpaRepositoryIntegrationTest {
     @DisplayName("Должен вернуть пустой Optional для несуществующего токена")
     void shouldReturnEmptyForNonExistentToken() {
         // When
-        Optional<UserSessionEntity> found = repository.findBySessionToken("non-existent-token");
+        Optional<UserSessionEntity> found = repository.findByRefreshToken("non-existent-token");
 
         // Then
         assertThat(found).isEmpty();

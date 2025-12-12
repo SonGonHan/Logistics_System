@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
         name = "user_sessions",
         schema = "user_management",
         uniqueConstraints = {
-                @UniqueConstraint(columnNames = "session_token")
+                @UniqueConstraint(columnNames = "refresh_token")
         },
         indexes = {
                 @Index(columnList = "user_id", name = "idx_user_sessions_user_id"),
@@ -46,8 +46,8 @@ public class UserSessionEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
-    @Column(name = "session_token", nullable = false)
-    private String sessionToken;
+    @Column(name = "refresh_token", nullable = false)
+    private String refreshToken;
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
@@ -56,6 +56,8 @@ public class UserSessionEntity {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "revoked", nullable = false)
+    private boolean revoked = false;
 
     @Column(name = "ip_address", columnDefinition = "inet")
     @Type(PostgreSQLInetType.class)

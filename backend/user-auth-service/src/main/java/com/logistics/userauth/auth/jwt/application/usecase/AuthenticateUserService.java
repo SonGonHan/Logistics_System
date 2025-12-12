@@ -2,7 +2,9 @@ package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
 import com.logistics.userauth.auth.jwt.application.port.in.AuthenticateUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
+import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ public class AuthenticateUserService implements AuthenticateUserUseCase {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenGeneratorPort tokenGenerator;
+    private final InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
 
     @Override
     public JwtAuthenticationResponse authenticate(AuthenticateUserCommand command) {
@@ -26,7 +29,15 @@ public class AuthenticateUserService implements AuthenticateUserUseCase {
             throw new BadCredentialsException("Invalid credentials");
         }
 
-        var token = tokenGenerator.generateAccessToken(user);
-        return new JwtAuthenticationResponse(token);
+        var accessToken = tokenGenerator.generateAccessToken(user);
+
+        var refreshToken = createRefreshTokenUseCase.create(
+                CreateRefreshTokenCommand.builder()
+                        .userId(user.getId())
+                        .ipAddress(command.ipAddress())
+                        .userAgent(command.userAgent())
+                        .build()
+        );
+        return new JwtAuthenticationResponse(accessToken, refreshToken);
     }
 }

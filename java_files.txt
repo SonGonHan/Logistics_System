@@ -1,3 +1,103 @@
+=== backend/shared-library/src/main/java/com/logistics/shared/validation/PasswordValidator.java ===
+package com.logistics.shared.validation;
+
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
+
+public class PasswordValidator implements ConstraintValidator<Password, String> {
+
+    // Минимум 8 символов, >=1 строчная, >=1 заглавная, >=1 цифра, >=1 спецсимвол
+    private static final String REGEX =
+            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^\\w\\s]).{8,}$";
+
+    @Override
+    public boolean isValid(String value, ConstraintValidatorContext context) {
+        if (value == null) {
+            return false;
+        }
+        return value.matches(REGEX);
+    }
+}
+
+
+
+=== backend/shared-library/src/main/java/com/logistics/shared/validation/Phone.java ===
+package com.logistics.shared.validation;
+
+
+import jakarta.validation.Constraint;
+import jakarta.validation.Payload;
+
+import java.lang.annotation.*;
+
+@Documented
+@Constraint(validatedBy = PhoneValidator.class)
+@Target({ ElementType.FIELD, ElementType.PARAMETER })
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Phone {
+
+    String message() default "Неверный формат телефона";
+
+    Class<?>[] groups() default {};
+
+    Class<? extends Payload>[] payload() default {};
+}
+
+
+
+=== backend/shared-library/src/main/java/com/logistics/shared/validation/PhoneValidator.java ===
+package com.logistics.shared.validation;
+
+import jakarta.validation.ConstraintValidator;
+import jakarta.validation.ConstraintValidatorContext;
+
+public class PhoneValidator implements ConstraintValidator<Phone, String> {
+
+
+    private static final String REGEX =
+            "^(?:\\+7|7)\\d{10}$" +              // Россия
+                    "|^(?:\\+375|375)\\d{9}$" +         // Беларусь
+                    "|^(?:\\+77|77)\\d{9}$";            // Казахстан
+
+    @Override
+    public boolean isValid(String value, ConstraintValidatorContext context) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        String normalized = value.replaceAll("[\\s\\-()]", "");
+        return normalized.matches(REGEX);
+    }
+}
+
+
+
+
+=== backend/shared-library/src/main/java/com/logistics/shared/validation/Password.java ===
+package com.logistics.shared.validation;
+
+import jakarta.validation.Constraint;
+import jakarta.validation.Payload;
+
+import java.lang.annotation.*;
+
+@Documented
+@Constraint(validatedBy = PasswordValidator.class)
+@Target({ ElementType.FIELD, ElementType.PARAMETER })
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Password {
+
+    String message() default
+            "Пароль должен содержать минимум 8 символов, " +
+                    "включая цифру, заглавную и строчную букву и спецсимвол";
+
+    Class<?>[] groups() default {};
+
+    Class<? extends Payload>[] payload() default {};
+}
+
+
+
+
 === backend/shared-library/src/main/java/com/logistics/shared/SharedLibraryConfiguration.java ===
 package com.logistics.shared;
 
@@ -203,6 +303,83 @@ import org.springframework.context.annotation.Import;
 public class TestApplication {
 
 }
+
+
+=== backend/shared-library/src/test/java/com/logistics/shared/validation/PhoneValidatorTest.java ===
+package com.logistics.shared.validation;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DisplayName("PhoneValidator: юнит‑тесты")
+class PhoneValidatorTest {
+
+    private final PhoneValidator validator = new PhoneValidator();
+
+    @Test
+    @DisplayName("Должен принимать корректные номера РФ/РБ/КЗ")
+    void shouldAcceptValidPhones() {
+        assertThat(validator.isValid("79991234567", null)).isTrue(); // РФ
+        assertThat(validator.isValid("+7 (999) 123-45-67", null)).isTrue(); // РФ с форматированием
+        assertThat(validator.isValid("+375291234567", null)).isTrue(); // Беларусь
+        assertThat(validator.isValid("375291234567", null)).isTrue();  // Беларусь без плюса
+        assertThat(validator.isValid("+77011234567", null)).isTrue();  // Казахстан
+        assertThat(validator.isValid("77011234567", null)).isTrue();   // Казахстан без плюса
+    }
+
+    @Test
+    @DisplayName("Должен отклонять некорректные номера")
+    void shouldRejectInvalidPhones() {
+        assertThat(validator.isValid("123", null)).isFalse();
+        assertThat(validator.isValid("abcdefghijk", null)).isFalse();
+        assertThat(validator.isValid("+1 999 123 45 67", null)).isFalse(); // не наш регион
+        assertThat(validator.isValid("+7999123456", null)).isFalse();      // мало цифр
+        assertThat(validator.isValid("+799912345678", null)).isFalse();    // много цифр
+    }
+
+}
+
+
+
+=== backend/shared-library/src/test/java/com/logistics/shared/validation/PasswordValidatorTest.java ===
+package com.logistics.shared.validation;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DisplayName("PasswordValidator: юнит‑тесты")
+class PasswordValidatorTest {
+
+    private final PasswordValidator validator = new PasswordValidator();
+
+    @Test
+    @DisplayName("Должен принимать достаточно сложные пароли")
+    void shouldAcceptStrongPasswords() {
+        assertThat(validator.isValid("Password123!", null)).isTrue();
+        assertThat(validator.isValid("Qwerty1@", null)).isTrue();
+    }
+
+    @Test
+    @DisplayName("Должен отклонять слабые пароли")
+    void shouldRejectWeakPasswords() {
+        assertThat(validator.isValid("short", null)).isFalse();          // короткий
+        assertThat(validator.isValid("password", null)).isFalse();      // без цифр/символов
+        assertThat(validator.isValid("password1", null)).isFalse();     // без спецсимвола
+        assertThat(validator.isValid("PASSWORD1!", null)).isFalse();    // без строчных
+        assertThat(validator.isValid("password1!", null)).isFalse();    // без заглавных
+    }
+
+    @Test
+    @DisplayName("Должен отклонять null")
+    void shouldRejectNull() {
+        assertThat(validator.isValid(null, null)).isFalse();
+    }
+}
+
 
 
 === backend/shared-library/src/test/java/com/logistics/shared/SharedLibraryApplicationTests.java ===
@@ -901,7 +1078,7 @@ import com.logistics.userauth.user.domain.UserRole;
 import java.util.Optional;
 
 public interface UserRepository {
-    void save(User user);
+    User save(User user);
 
     void delete(User user);
 
@@ -969,6 +1146,8 @@ public class User {
 
     private Long facilityId;
 
+    private LocalDateTime createdTime;
+
     private LocalDateTime lastAccessedTime;
 
     private UserStatus status;
@@ -989,15 +1168,32 @@ public enum UserStatus {
 === backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/SignUpRequest.java ===
 package com.logistics.userauth.user.adapter.in.web.dto;
 
+import com.logistics.shared.validation.Password;
+import com.logistics.shared.validation.Phone;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 public record SignUpRequest(
+        @Email
         String email,
+
+        @NotNull
+        @Phone
         String phone,
+
+        @Password
         String password,
+
+        @NotBlank
         String firstName,
+
+        @NotBlank
         String lastName,
+
+        @NotBlank
         String middleName
-) {
-}
+) {}
 
 
 
@@ -1021,9 +1217,22 @@ public record UserDTO (String phone,
 === backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/SignInRequest.java ===
 package com.logistics.userauth.user.adapter.in.web.dto;
 
-public record SignInRequest (String phone, String email, String password) {
-}
+import com.logistics.shared.validation.Password;
+import com.logistics.shared.validation.Phone;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
 
+public record SignInRequest (
+        @NotNull
+        @Phone
+        String phone,
+
+        @Email
+        String email,
+
+        @Password
+        String password
+) { }
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/FacilityDTO.java ===
@@ -1078,6 +1287,9 @@ package com.logistics.userauth.user.adapter.out.persistence;
 import com.logistics.userauth.user.domain.User;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+
 @Component
 public class UserPersistenceMapper {
 
@@ -1093,6 +1305,7 @@ public class UserPersistenceMapper {
                 .role(domain.getRole())
                 .facilityId(domain.getFacilityId())
                 .status(domain.getStatus())
+                .createdAt(domain.getCreatedTime())
                 .lastAccessedAt(domain.getLastAccessedTime())
                 .build();
     }
@@ -1109,6 +1322,8 @@ public class UserPersistenceMapper {
                 .role(entity.getRole())
                 .facilityId(entity.getFacilityId())
                 .status(entity.getStatus())
+                .createdTime(entity.getCreatedAt())
+                .lastAccessedTime(entity.getLastAccessedAt())
                 .build();
     }
 }
@@ -1134,9 +1349,10 @@ public class UserPersistenceAdapter implements UserRepository {
     private final UserPersistenceMapper mapper;
 
     @Override
-    public void save(User user) {
+    public User save(User user) {
         UserEntity entity = mapper.toEntity(user);
-        jpaRepo.save(entity);
+        var saved = jpaRepo.save(entity);
+        return mapper.toDomain(saved);
     }
 
     @Override
@@ -1251,7 +1467,7 @@ public class UserEntity {
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
     @Column(name = "last_accessed_at")
     private LocalDateTime lastAccessedAt;
@@ -1359,11 +1575,63 @@ public class LogisticsUserDetailsService implements UserDetailsService {
 
 
 
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/common/web/GlobalExceptionHandler.java ===
+package com.logistics.userauth.common.web;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@ControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "INVALID_CREDENTIALS");
+        body.put("message", "Неверный телефон или пароль");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "CONFLICT");
+        body.put("message", "Пользователь с таким телефоном или email уже существует");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
+        Map<String, String> fieldErrors = new HashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "VALIDATION_FAILED");
+        body.put("fields", fieldErrors);
+        return ResponseEntity.badRequest().body(body);
+    }
+}
+
+
+
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/usecase/RegisterUserService.java ===
 package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.RegisterUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
 import com.logistics.userauth.user.application.port.out.UserRepository;
@@ -1382,7 +1650,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenGeneratorPort tokenGenerator;
-
+    private final InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
 
     @Override
     public JwtAuthenticationResponse register(RegisterUserCommand command) {
@@ -1395,13 +1663,83 @@ public class RegisterUserService implements RegisterUserUseCase {
                 .middleName(command.middleName())
                 .role(UserRole.CLIENT)
                 .status(UserStatus.ACTIVE)
+                .createdTime(LocalDateTime.now())
                 .lastAccessedTime(LocalDateTime.now())
                 .build();
 
-        userRepository.save(user);
+        var saved = userRepository.save(user);
 
-        String token = tokenGenerator.generateAccessToken(user);
-        return new JwtAuthenticationResponse(token);
+        var accessToken = tokenGenerator.generateAccessToken(saved);
+
+        var refreshToken = createRefreshTokenUseCase.create(
+                CreateRefreshTokenCommand.builder()
+                        .userId(user.getId())
+                        .ipAddress(command.ipAddress())
+                        .userAgent(command.userAgent())
+                        .build()
+        );
+        return new JwtAuthenticationResponse(accessToken, refreshToken);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/usecase/RefreshAccessTokenService.java ===
+package com.logistics.userauth.auth.jwt.application.usecase;
+
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.RefreshAccessTokenUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
+import com.logistics.userauth.auth.jwt.application.port.in.command.RefreshAccessTokenCommand;
+import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.domain.UserSession;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class RefreshAccessTokenService implements RefreshAccessTokenUseCase {
+
+    private final UserSessionRepository repository;
+    private final TokenGeneratorPort tokenGenerator;
+    private final InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
+
+    @Override
+    @Transactional
+    public JwtAuthenticationResponse refresh(RefreshAccessTokenCommand command) {
+        var session = repository.findByRefreshToken(command.refreshToken())
+                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+
+        validate(session);
+
+        String newAccessToken = tokenGenerator.generateAccessToken(session.getUser());
+
+        session.setRevoked(true);
+        repository.save(session);
+
+        String newRefreshToken = createRefreshTokenUseCase.create(
+                CreateRefreshTokenCommand.builder()
+                        .userId(session.getUser().getId())
+                        .ipAddress(command.ipAddress())
+                        .userAgent(command.userAgent())
+                        .build()
+        );
+        return new JwtAuthenticationResponse(newAccessToken, newRefreshToken);
+    }
+
+    private static void validate(UserSession session) {
+        if (session.isRevoked()) {
+            throw new RuntimeException("Refresh token is revoked");
+        }
+
+        if (session.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Refresh token is expired");
+        }
     }
 }
 
@@ -1412,7 +1750,9 @@ package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
 import com.logistics.userauth.auth.jwt.application.port.in.AuthenticateUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
+import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -1426,6 +1766,7 @@ public class AuthenticateUserService implements AuthenticateUserUseCase {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenGeneratorPort tokenGenerator;
+    private final InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
 
     @Override
     public JwtAuthenticationResponse authenticate(AuthenticateUserCommand command) {
@@ -1436,8 +1777,89 @@ public class AuthenticateUserService implements AuthenticateUserUseCase {
             throw new BadCredentialsException("Invalid credentials");
         }
 
-        var token = tokenGenerator.generateAccessToken(user);
-        return new JwtAuthenticationResponse(token);
+        var accessToken = tokenGenerator.generateAccessToken(user);
+
+        var refreshToken = createRefreshTokenUseCase.create(
+                CreateRefreshTokenCommand.builder()
+                        .userId(user.getId())
+                        .ipAddress(command.ipAddress())
+                        .userAgent(command.userAgent())
+                        .build()
+        );
+        return new JwtAuthenticationResponse(accessToken, refreshToken);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/usecase/RevokeRefreshTokenService.java ===
+package com.logistics.userauth.auth.jwt.application.usecase;
+
+import com.logistics.userauth.auth.jwt.application.port.in.RevokeRefreshTokenUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.command.RevokeRefreshTokenCommand;
+import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class RevokeRefreshTokenService implements RevokeRefreshTokenUseCase {
+    private UserSessionRepository repository;
+
+    @Override
+    public void revoke(RevokeRefreshTokenCommand command) {
+        var session = repository.findByRefreshToken(command.refreshToken()).orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+        session.setRevoked(true);
+        repository.save(session);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/usecase/InternalCreateRefreshTokenService.java ===
+package com.logistics.userauth.auth.jwt.application.usecase;
+
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
+import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.domain.UserSession;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import io.hypersistence.utils.hibernate.type.basic.Inet;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class InternalCreateRefreshTokenService implements InternalCreateRefreshTokenUseCase {
+
+    private final UserSessionRepository sessionRepository;
+    private final UserRepository userRepository;
+
+    @Value("${app.jwt.refresh-expiration}")
+    private long refreshTokenTtlSeconds;
+
+    @Override
+    public String create(CreateRefreshTokenCommand command) {
+        var user = userRepository.findById(command.userId()).orElseThrow(() ->  new RuntimeException("User not found"));
+
+        String refreshToken = UUID.randomUUID().toString();
+
+        var session = UserSession.builder()
+                .user(user)
+                .refreshToken(refreshToken)
+                .expiresAt(LocalDateTime.now().plusSeconds(refreshTokenTtlSeconds))
+                .createdAt(LocalDateTime.now())
+                .ipAddress(command.ipAddress() != null ? new Inet(command.ipAddress()): null)
+                .userAgent(command.userAgent())
+                .revoked(false)
+                .build();
+
+        sessionRepository.save(session);
+        return refreshToken;
     }
 }
 
@@ -1469,24 +1891,110 @@ public interface AuthenticateUserUseCase {
 
 
 
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/RevokeRefreshTokenUseCase.java ===
+package com.logistics.userauth.auth.jwt.application.port.in;
+
+import com.logistics.userauth.auth.jwt.application.port.in.command.RevokeRefreshTokenCommand;
+
+public interface RevokeRefreshTokenUseCase {
+    void revoke(RevokeRefreshTokenCommand command);
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/InternalCreateRefreshTokenUseCase.java ===
+package com.logistics.userauth.auth.jwt.application.port.in;
+
+import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
+
+public interface InternalCreateRefreshTokenUseCase {
+    String create(CreateRefreshTokenCommand command);
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/RefreshAccessTokenUseCase.java ===
+package com.logistics.userauth.auth.jwt.application.port.in;
+
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.command.RefreshAccessTokenCommand;
+
+public interface RefreshAccessTokenUseCase {
+    JwtAuthenticationResponse refresh(RefreshAccessTokenCommand command);
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/command/CreateRefreshTokenCommand.java ===
+package com.logistics.userauth.auth.jwt.application.port.in.command;
+
+import lombok.Builder;
+
+@Builder
+public record CreateRefreshTokenCommand(
+        Long userId,
+        String ipAddress,
+        String userAgent
+){
+}
+
+
+
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/command/RegisterUserCommand.java ===
 package com.logistics.userauth.auth.jwt.application.port.in.command;
 
+import lombok.Builder;
+
+@Builder
 public record RegisterUserCommand(
         String email,
         String phone,
         String rawPassword,
         String firstName,
         String lastName,
-        String middleName
+        String middleName,
+        String ipAddress,
+        String userAgent
 ) { }
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/command/RefreshAccessTokenCommand.java ===
+package com.logistics.userauth.auth.jwt.application.port.in.command;
+
+import lombok.Builder;
+
+@Builder
+public record RefreshAccessTokenCommand (
+        String refreshToken,
+        String ipAddress,
+        String userAgent) {
+}
 
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/command/AuthenticateUserCommand.java ===
 package com.logistics.userauth.auth.jwt.application.port.in.command;
 
-public record AuthenticateUserCommand (String phone, String password) {
+import lombok.Builder;
+
+@Builder
+public record AuthenticateUserCommand (
+        String phone,
+        String password,
+        String ipAddress,
+        String userAgent) {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/port/in/command/RevokeRefreshTokenCommand.java ===
+package com.logistics.userauth.auth.jwt.application.port.in.command;
+
+import lombok.Builder;
+
+@Builder
+public record RevokeRefreshTokenCommand(String refreshToken) {
 }
 
 
@@ -1593,20 +2101,34 @@ package com.logistics.userauth.auth.jwt.adapter.in.web.dto;
 import lombok.Builder;
 
 @Builder
-public record JwtAuthenticationResponse (String token) {
+public record JwtAuthenticationResponse (String accessToken, String refreshToken) {
 }
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/adapter/in/web/dto/RefreshTokenRequest.java ===
+package com.logistics.userauth.auth.jwt.adapter.in.web.dto;
+
+public record RefreshTokenRequest(String refreshToken) {
+}
+
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/adapter/in/web/AuthController.java ===
 package com.logistics.userauth.auth.jwt.adapter.in.web;
 
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.RefreshTokenRequest;
 import com.logistics.userauth.auth.jwt.application.port.in.AuthenticateUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.RefreshAccessTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.RegisterUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.RevokeRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
+import com.logistics.userauth.auth.jwt.application.port.in.command.RefreshAccessTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
+import com.logistics.userauth.auth.jwt.application.port.in.command.RevokeRefreshTokenCommand;
 import com.logistics.userauth.user.adapter.in.web.dto.SignInRequest;
 import com.logistics.userauth.user.adapter.in.web.dto.SignUpRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -1619,33 +2141,66 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final AuthenticateUserUseCase authenticateUserUseCase;
     private final RegisterUserUseCase registerUserUseCase;
+    private final RefreshAccessTokenUseCase refreshAccessTokenUseCase;
+    private final RevokeRefreshTokenUseCase revokeRefreshTokenUseCase;
 
     @PostMapping("/sign-in")
     public ResponseEntity<JwtAuthenticationResponse> signIn(
-            @Valid @RequestBody SignInRequest request
+            @Valid @RequestBody SignInRequest request,
+            HttpServletRequest httpRequest
     ) {
-        var command = new AuthenticateUserCommand(
-                request.phone(),
-                request.password()
-        );
+        var command = AuthenticateUserCommand.builder()
+                .phone(request.phone())
+                .password(request.password())
+                .ipAddress(httpRequest.getRemoteAddr())
+                .userAgent(httpRequest.getHeader("User-Agent"))
+                .build();
         return ResponseEntity.ok(authenticateUserUseCase.authenticate(command));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<JwtAuthenticationResponse> refresh(
+            @Valid @RequestBody RefreshTokenRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        var command = RefreshAccessTokenCommand.builder()
+                .refreshToken(request.refreshToken())
+                .ipAddress(httpRequest.getRemoteAddr())
+                .userAgent(httpRequest.getHeader("User-Agent"))
+                .build();
+
+        return ResponseEntity.ok(refreshAccessTokenUseCase.refresh(command));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        var command = RevokeRefreshTokenCommand.builder()
+                .refreshToken(request.refreshToken())
+                .build();
+
+        revokeRefreshTokenUseCase.revoke(command);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<JwtAuthenticationResponse> signUp(
-            @Valid @RequestBody SignUpRequest request
+            @Valid @RequestBody SignUpRequest request,
+            HttpServletRequest httpRequest
     ) {
-        var command = new RegisterUserCommand(
-                request.email(),
-                request.phone(),
-                request.password(),
-                request.firstName(),
-                request.lastName(),
-                request.middleName()
-        );
+        var command = RegisterUserCommand.builder()
+                .email(request.email())
+                .phone(request.phone())
+                .rawPassword(request.password())
+                .firstName(request.firstName())
+                .lastName(request.lastName())
+                .middleName(request.middleName())
+                .ipAddress(httpRequest.getRemoteAddr())
+                .userAgent(httpRequest.getHeader("User-Agent"))
+                .build();
 
-        return ResponseEntity.ok(registerUserUseCase.register(command));
+        var response = registerUserUseCase.register(command);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
 
@@ -1710,6 +2265,8 @@ public class JwtTokenProvider implements TokenGeneratorPort {
         String sub = claims.getSubject();
         return Long.valueOf(sub);
     }
+
+
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
@@ -1821,7 +2378,7 @@ import java.util.Optional;
 public interface UserSessionRepository {
     Optional<UserSession> findByUser(User user);
 
-    Optional<UserSession> findBySessionToken(String sessionToken);
+    Optional<UserSession> findByRefreshToken(String refreshToken);
 
     void save(UserSession userSession);
 
@@ -1852,7 +2409,7 @@ public class UserSession {
 
     private User user;
 
-    private String sessionToken;
+    private String refreshToken;
 
     private LocalDateTime createdAt;
 
@@ -1861,6 +2418,8 @@ public class UserSession {
     private Inet ipAddress;
 
     private String userAgent;
+
+    private boolean revoked;
 
 }
 
@@ -1967,8 +2526,8 @@ public class UserSessionEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
-    @Column(name = "session_token", nullable = false)
-    private String sessionToken;
+    @Column(name = "refresh_token", nullable = false)
+    private String refreshToken;
 
     @Column(name = "expires_at", nullable = false)
     private LocalDateTime expiresAt;
@@ -1977,6 +2536,8 @@ public class UserSessionEntity {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "revoked", nullable = false)
+    private boolean revoked = false;
 
     @Column(name = "ip_address", columnDefinition = "inet")
     @Type(PostgreSQLInetType.class)
@@ -2007,11 +2568,12 @@ public class UserSessionPersistenceMapper {
         return UserSession.builder()
                 .id(entity.getId())
                 .user(upMapper.toDomain(entity.getUser()))
+                .refreshToken(entity.getRefreshToken())
                 .expiresAt(entity.getExpiresAt())
                 .ipAddress(entity.getIpAddress())
+                .revoked(entity.isRevoked())
                 .userAgent(entity.getUserAgent())
                 .createdAt(entity.getCreatedAt())
-                .sessionToken(entity.getSessionToken())
                 .build();
     }
 
@@ -2019,9 +2581,10 @@ public class UserSessionPersistenceMapper {
         return UserSessionEntity.builder()
                 .id(domain.getId())
                 .user(upMapper.toEntity(domain.getUser()))
-                .sessionToken(domain.getSessionToken())
+                .refreshToken(domain.getRefreshToken())
                 .createdAt(domain.getCreatedAt())
                 .expiresAt(domain.getExpiresAt())
+                .revoked(domain.isRevoked())
                 .ipAddress(domain.getIpAddress())
                 .userAgent(domain.getUserAgent())
                 .build();
@@ -2054,8 +2617,8 @@ public class UserSessionPersistenceAdapter implements UserSessionRepository {
     }
 
     @Override
-    public Optional<UserSession> findBySessionToken(String sessionToken) {
-        return jpaRepo.findBySessionToken(sessionToken).map(mapper::toDomain);
+    public Optional<UserSession> findByRefreshToken(String refreshToken) {
+        return jpaRepo.findByRefreshToken(refreshToken).map(mapper::toDomain);
     }
 
     @Override
@@ -2086,7 +2649,7 @@ import java.util.Optional;
 public interface UserSessionJpaRepository extends JpaRepository<UserSessionEntity, Long> {
     Optional<UserSessionEntity> findByUser(User user);
 
-    Optional<UserSessionEntity> findBySessionToken(String sessionToken);
+    Optional<UserSessionEntity> findByRefreshToken(String refreshToken);
 
 }
 
@@ -2409,7 +2972,17 @@ class UserPersistenceAdapterIntegrationTest {
     @DisplayName("Должен сохранить и получить пользователя")
     void shouldSaveAndRetrieveUser() {
         // Given
-        User user = User.builder().email("adapter@test.com").phone("+79993333333").passwordHash("hashed123").firstName("Adapter").lastName("Test").role(UserRole.DISPATCHER).status(UserStatus.ACTIVE).lastAccessedTime(LocalDateTime.now()).build();
+        User user = User.builder()
+                .email("adapter@test.com")
+                .phone("+79993333333")
+                .passwordHash("hashed123")
+                .firstName("Adapter")
+                .lastName("Test")
+                .role(UserRole.DISPATCHER)
+                .status(UserStatus.ACTIVE)
+                .createdTime(LocalDateTime.now())
+                .lastAccessedTime(LocalDateTime.now())
+                .build();
 
         // When
         adapter.save(user);
@@ -2515,6 +3088,7 @@ class UserPersistenceMapperTest {
                 .role(UserRole.CLIENT)
                 .facilityId(100L)
                 .status(UserStatus.ACTIVE)
+                .createdTime(LocalDateTime.now())
                 .lastAccessedTime(LocalDateTime.now())
                 .build();
 
@@ -2542,6 +3116,8 @@ class UserPersistenceMapperTest {
                 .role(UserRole.COURIER)
                 .facilityId(200L)
                 .status(UserStatus.ACTIVE)
+                .createdAt(LocalDateTime.now())
+                .lastAccessedAt(LocalDateTime.now())
                 .build();
 
         // When
@@ -2552,6 +3128,437 @@ class UserPersistenceMapperTest {
         assertThat(domain.getId()).isEqualTo(2L);
         assertThat(domain.getEmail()).isEqualTo("courier@example.com");
         assertThat(domain.getRole()).isEqualTo(UserRole.COURIER);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/common/web/GlobalExceptionHandlerTest.java ===
+package com.logistics.userauth.common.web;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DisplayName("GlobalExceptionHandler: обработка типичных ошибок")
+class GlobalExceptionHandlerTest {
+
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    @Test
+    @DisplayName("Должен возвращать 401 и INVALID_CREDENTIALS при BadCredentialsException")
+    void shouldHandleBadCredentials() {
+        BadCredentialsException ex = new BadCredentialsException("Invalid credentials");
+
+        ResponseEntity<Map<String, Object>> response = handler.handleBadCredentials(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("error")).isEqualTo("INVALID_CREDENTIALS");
+        assertThat(response.getBody().get("message")).isEqualTo("Неверный телефон или пароль");
+    }
+
+    @Test
+    @DisplayName("Должен возвращать 409 и CONFLICT при DataIntegrityViolationException")
+    void shouldHandleDataIntegrityViolation() {
+        DataIntegrityViolationException ex =
+                new DataIntegrityViolationException("duplicate key value violates unique constraint");
+
+        ResponseEntity<Map<String, Object>> response = handler.handleDataIntegrity(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("error")).isEqualTo("CONFLICT");
+        assertThat(response.getBody().get("message"))
+                .isEqualTo("Пользователь с таким телефоном или email уже существует");
+    }
+
+    @Test
+    @DisplayName("Должен возвращать 400 и VALIDATION_FAILED при ошибках Bean Validation")
+    void shouldHandleValidationErrors() throws Exception {
+        // имитируем DTO с ошибкой в поле "phone"
+        class DummyDto {
+            @SuppressWarnings("unused")
+            private String phone;
+        }
+
+        DummyDto target = new DummyDto();
+        BeanPropertyBindingResult bindingResult =
+                new BeanPropertyBindingResult(target, "dummyDto");
+        bindingResult.addError(new FieldError("dummyDto", "phone",
+                "Неверный формат телефона"));
+
+        MethodArgumentNotValidException ex =
+                new MethodArgumentNotValidException(null, bindingResult);
+
+        ResponseEntity<Map<String, Object>> response = handler.handleValidation(ex);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("error")).isEqualTo("VALIDATION_FAILED");
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> fields = (Map<String, String>) response.getBody().get("fields");
+        assertThat(fields).containsEntry("phone", "Неверный формат телефона");
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/application/usecase/AuthenticateUserServiceTest.java ===
+package com.logistics.userauth.auth.jwt.application.usecase;
+
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
+import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+import com.logistics.userauth.user.domain.UserStatus;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("Тесты для AuthenticateUserService")
+public class AuthenticateUserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private TokenGeneratorPort tokenGenerator;
+
+    @InjectMocks
+    private AuthenticateUserService service;
+
+    private User buildUser() {
+        return User.builder()
+                .id(1L)
+                .email("test@example.com")
+                .phone("79991234567")
+                .passwordHash("HASH")
+                .firstName("Иван")
+                .lastName("Иванов")
+                .middleName("Иванович")
+                .role(UserRole.CLIENT)
+                .status(UserStatus.ACTIVE)
+                .lastAccessedTime(LocalDateTime.now())
+                .build();
+    }
+
+    @Test
+    @DisplayName("Должен аутентифицировать пользователя и вернуть JWT")
+    void shouldAuthenticateUserAndReturnJwt() {
+        // given
+        var command = AuthenticateUserCommand.builder()
+                .phone("79991234567")
+                .password("Password123!")
+                .ipAddress("192.168.1.10")
+                .userAgent("Mozilla")
+                .build();
+
+        var user = buildUser();
+
+        when(userRepository.findByPhone("79991234567")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("Password123!", "HASH")).thenReturn(true);
+        when(tokenGenerator.generateAccessToken(any(User.class))).thenReturn("jwt-token");
+
+        // when
+        JwtAuthenticationResponse response = service.authenticate(command);
+
+        // then
+        assertThat(response).isNotNull();
+        assertThat(response.accessToken()).isEqualTo("jwt-token");
+    }
+
+    @Test
+    @DisplayName("Должен бросить BadCredentialsException при неверном пароле")
+    void shouldThrowWhenPasswordInvalid() {
+        // given
+        var command = AuthenticateUserCommand.builder()
+                .phone("79991234567")
+                .password("wrong")
+                .ipAddress("192.168.1.10")
+                .userAgent("Mozilla")
+                .build();
+
+        var user = buildUser();
+
+        when(userRepository.findByPhone("79991234567")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong", "HASH")).thenReturn(false);
+
+        // then
+        assertThatThrownBy(() -> service.authenticate(command))
+                .isInstanceOf(BadCredentialsException.class);
+    }
+
+    @Test
+    @DisplayName("Должен бросить BadCredentialsException, если пользователь не найден")
+    void shouldThrowWhenUserNotFound() {
+        // given
+        var command = AuthenticateUserCommand.builder()
+                .phone("79990000000")
+                .password("Password123!")
+                .ipAddress("192.168.1.10")
+                .userAgent("Mozilla")
+                .build();
+
+        when(userRepository.findByPhone("79990000000")).thenReturn(Optional.empty());
+
+        // then
+        assertThatThrownBy(() -> service.authenticate(command))
+                .isInstanceOf(BadCredentialsException.class);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/application/usecase/RegisterUserServiceTest.java ===
+package com.logistics.userauth.auth.jwt.application.usecase;
+
+import com.logistics.userauth.IntegrationTest;
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
+import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+import com.logistics.userauth.user.domain.UserStatus;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("Тесты для RegisterUserService")
+public class RegisterUserServiceTest {
+
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private TokenGeneratorPort tokenGenerator;
+
+    @InjectMocks
+    private RegisterUserService service;
+
+    @Test
+    @DisplayName("Должен зарегистрировать пользователя и вернуть JWT-токен")
+    void shouldRegisterUserAndReturnJwt() {
+        // given
+        var command = new RegisterUserCommand(
+                "test@example.com",
+                "79991234567",
+                "rawPass",
+                "Ivan",
+                "Ivanov",
+                "Ivanovich"
+        );
+
+        var savedUser = User.builder()
+                .id(1L)
+                .email(command.email())
+                .phone(command.phone())
+                .passwordHash("encodedPass")
+                .firstName(command.firstName())
+                .lastName(command.lastName())
+                .middleName(command.middleName())
+                .role(UserRole.CLIENT)
+                .status(UserStatus.ACTIVE)
+                .build();
+
+        when(passwordEncoder.encode("rawPass")).thenReturn("encodedPass");
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(tokenGenerator.generateAccessToken(savedUser)).thenReturn("jwt-token");
+
+        // when
+        var response = service.register(command);
+
+        // then
+        assertEquals("jwt-token", response.token());
+        verify(userRepository).save(any(User.class));
+        verify(tokenGenerator).generateAccessToken(savedUser);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/application/JwtTokenProviderTest.java ===
+package com.logistics.userauth.auth.jwt.application;
+
+
+import com.logistics.userauth.auth.jwt.adapter.out.JwtTokenProvider;
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+import com.logistics.userauth.user.domain.UserStatus;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.time.LocalDateTime;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+
+@DisplayName("JwtTokenProvider: юнит‑тесты")
+public class JwtTokenProviderTest {
+
+    private JwtTokenProvider jwtTokenProvider;
+
+    @BeforeEach
+    void setUp() {
+        jwtTokenProvider = new JwtTokenProvider();
+        TestReflection.setField(jwtTokenProvider, "secret", "test-secret-key-test-secret-key-123456");
+        TestReflection.setField(jwtTokenProvider, "accessTokenTtlSeconds", 3600_000L);
+    }
+
+    private User buildUser() {
+        return User.builder()
+                .id(42L)
+                .email("test@example.com")
+                .phone("79991234567")
+                .passwordHash("HASH")
+                .firstName("Иван")
+                .lastName("Иванов")
+                .middleName("Иванович")
+                .role(UserRole.CLIENT)
+                .status(UserStatus.ACTIVE)
+                .createdTime(LocalDateTime.now())
+                .lastAccessedTime(LocalDateTime.now())
+                .build();
+    }
+
+    @Test
+    @DisplayName("Должен генерировать и валидировать JWT и извлекать userId")
+    void shouldGenerateAndValidateToken() {
+        User user = buildUser();
+
+        String token = jwtTokenProvider.generateAccessToken(user);
+
+        assertThat(token).isNotBlank();
+        assertThat(jwtTokenProvider.isTokenValid(token)).isTrue();
+
+        Long userId = jwtTokenProvider.extractUserId(token);
+        assertThat(userId).isEqualTo(42L);
+    }
+
+    /**
+     * Вспомогательный класс для установки приватных полей через reflection,
+     * чтобы не тянуть Spring в юнит‑тест.
+     */
+    static class TestReflection {
+        static void setField(Object target, String fieldName, Object value) {
+            try {
+                var field = target.getClass().getDeclaredField(fieldName);
+                field.setAccessible(true);
+                field.set(target, value);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/AuthIntegrationTest.java ===
+package com.logistics.userauth.auth.jwt;
+
+import com.logistics.userauth.IntegrationTest;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+
+@IntegrationTest
+@AutoConfigureMockMvc
+@DisplayName("AuthController: интеграционный тест")
+class AuthIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    @DisplayName("Регистрация и логин должны работать сквозным сценарием")
+    void shouldRegisterAndLogin() throws Exception {
+        // 1) Регистрация
+        String signUpJson = """
+            {
+              "email": "test@example.com",
+              "phone": "79991234567",
+              "password": "Password123!",
+              "firstName": "Иван",
+              "lastName": "Иванов",
+              "middleName": "Иванович"
+            }
+            """;
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(signUpJson))
+                .andExpect(status().isCreated());
+
+        // 2) Логин
+        String signInJson = """
+            {
+              "phone": "79991234567",
+              "password": "Password123!"
+            }
+            """;
+
+        mockMvc.perform(post("/auth/sign-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(signInJson))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").exists())
+        ;
     }
 }
 
@@ -2613,7 +3620,7 @@ class UserSessionJpaRepositoryIntegrationTest {
     @Test
     @Transactional
     @DisplayName("Должен сохранить и найти сессию по токену")
-    void shouldSaveAndFindBySessionToken() {
+    void shouldSaveAndFindByRefreshToken() {
 
         Inet in = new Inet("192.168.1.10");
         // Given
@@ -2630,7 +3637,7 @@ class UserSessionJpaRepositoryIntegrationTest {
         repository.save(session);
 
         // Then
-        Optional<UserSessionEntity> found = repository.findBySessionToken("unique-token-12345");
+        Optional<UserSessionEntity> found = repository.findByRefreshToken("unique-token-12345");
 
         assertThat(found).isPresent();
         assertThat(found.get().getUser()).isEqualTo(testUser);
@@ -2643,7 +3650,7 @@ class UserSessionJpaRepositoryIntegrationTest {
     @DisplayName("Должен вернуть пустой Optional для несуществующего токена")
     void shouldReturnEmptyForNonExistentToken() {
         // When
-        Optional<UserSessionEntity> found = repository.findBySessionToken("non-existent-token");
+        Optional<UserSessionEntity> found = repository.findByRefreshToken("non-existent-token");
 
         // Then
         assertThat(found).isEmpty();
