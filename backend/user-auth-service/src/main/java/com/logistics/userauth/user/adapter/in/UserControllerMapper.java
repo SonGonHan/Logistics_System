@@ -6,25 +6,35 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 
+/**
+ * Маппер для преобразования между Domain User и DTO.
+ *
+ * <h2>Назначение</h2>
+ * Конвертирует User → UserDTO и обратно.
+ * НЕ передает пароль в DTO (по соображениям безопасности).
+ *
+ * @see UserDTO для DTO
+ * @see User для доменной сущности
+ */
 @Component
 public class UserControllerMapper {
-    public static UserDTO toDTO(User user) {
+    public static UserDTO toDTO(User domain) {
         return UserDTO.builder()
-                .phone(user.getPhone())
-                .firstName(user.getFirstName())
-                .lastName(user.getLastName())
-                .middleName(user.getMiddleName())
-                .role(user.getRole())
+                .phone(domain.getPhone())
+                .firstName(domain.getFirstName())
+                .lastName(domain.getLastName())
+                .middleName(domain.getMiddleName())
+                .role(domain.getRole())
                 .build();
     }
 
-    public static User toUser(UserDTO userDTO) {
+    public static User toDomain(UserDTO dto) {
         return User.builder()
-                .phone(userDTO.phone())
-                .firstName(userDTO.firstName())
-                .lastName(userDTO.lastName())
-                .middleName(userDTO.middleName())
-                .role(userDTO.role())
+                .phone(dto.phone())
+                .firstName(dto.firstName())
+                .lastName(dto.lastName())
+                .middleName(dto.middleName())
+                .role(dto.role())
                 .lastAccessedTime(LocalDateTime.now())
                 .build();
     }

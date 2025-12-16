@@ -1,8 +1,7 @@
-// backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/application/usecase/InternalCreateRefreshTokenServiceTest.java
 package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
-import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
 import com.logistics.userauth.auth.session.domain.UserSession;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import com.logistics.userauth.user.domain.User;

@@ -18,6 +18,24 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Конфигурация Spring Security для JWT-based аутентификации.
+ *
+ * Особенности:
+ * - Stateless сессии (не используются cookies и sessions)
+ * - CSRF отключен (для REST API с JWT не требуется)
+ * - JWT фильтр регистрируется в цепочке безопасности
+ * - /auth/** endpoints открыты для всех
+ * - Остальные endpoints требуют валидный JWT токен
+ *
+ * Архитектура:
+ * 1. JwtAuthenticationFilter → извлекает и валидирует токен
+ * 2. AuthenticationProvider → аутентифицирует user/password при логине
+ * 3. SecurityFilterChain → определяет какие endpoint защищены
+ *
+ * @see JwtAuthenticationFilter для деталей обработки JWT
+ * @see LogisticsUserDetailsService для загрузки пользователя из БД
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -28,43 +46,53 @@ public class SecurityConfiguration {
 
     private final LogisticsUserDetailsService userDetailsService;
 
+    /**
+     * Определяет цепочку фильтров безопасности.
+     *
+     * @param http HttpSecurity для конфигурации
+     * @return SecurityFilterChain
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-                // REST + JWT => CSRF обычно отключаем
                 .csrf(csrf -> csrf.disable())
 
-                // Сессии нам не нужны, работаем stateless
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                // Настройки авторизации по URL
                 .authorizeHttpRequests(auth -> auth
-                        // эндпоинты авторизации/регистрации — без токена
                         .requestMatchers("/auth/**").permitAll()
-                        // при необходимости добавь swagger / actuator и т.п.
-                        //.requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
-                        // всё остальное — только с валидным JWT
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/index.html",
+                                "/webjars/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
+
                 )
 
-                // Указываем, как аутентифицировать username/password (используется при логине)
                 .authenticationProvider(authenticationProvider())
 
-                // Регистрируем наш JWT-фильтр ПЕРЕД стандартным UsernamePasswordAuthenticationFilter
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    /**
+     * Провайдер аутентификации для username/password при логине.
+     *
+     * @return AuthenticationProvider
+     */
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        // сюда подложи свой UserDetailsService-адаптер поверх доменного UserRepository
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {

@@ -1,21 +1,40 @@
 package com.logistics.userauth.auth.session.adapter.out.persistence;
 
+import com.logistics.userauth.auth.session.domain.UserSession;
 import com.logistics.userauth.user.adapter.out.persistence.UserEntity;
 import io.hypersistence.utils.hibernate.type.basic.Inet;
 import io.hypersistence.utils.hibernate.type.basic.PostgreSQLInetType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.Type;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
-
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+/**
+ * JPA Entity для хранения сессий пользователей и их refresh токенов.
+ *
+ * Таблица: user_management.user_sessions
+ *
+ * Основные поля:
+ * - sessionId: Уникальный ID сессии (первичный ключ)
+ * - userId: Внешний ключ на таблицу users
+ * - refreshToken: UUID токен для обновления access token
+ * - expiresAt: Время истечения refresh token (обычно 7-30 дней)
+ * - createdAt: Время создания сессии
+ * - revoked: Флаг отзыва (true = токен больше не валиден)
+ * - ipAddress: IP-адрес клиента (для аудита)
+ * - userAgent: User-Agent браузера (для аудита)
+ *
+ * Индексы:
+ * - idx_user_sessions_user_id: для быстрого поиска сессий пользователя
+ * - idx_user_sessions_expires_at: для очистки истекших сессий
+ *
+ * Уникальные ограничения:
+ * - refresh_token должен быть уникален (один токен = одна сессия)
+ *
+ * @see UserSession доменная модель
+ * @see UserSessionPersistenceMapper преобразование Entity ↔ Domain
+ */
 @Entity
 @Table(
         name = "user_sessions",
@@ -28,6 +47,10 @@ import java.time.LocalDateTime;
                 @Index(columnList = "expires_at", name = "idx_user_sessions_expires_at")
         }
 )
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class UserSessionEntity {
 
@@ -56,6 +79,7 @@ public class UserSessionEntity {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Builder.Default
     @Column(name = "revoked", nullable = false)
     private boolean revoked = false;
 
@@ -64,6 +88,6 @@ public class UserSessionEntity {
     private Inet ipAddress;
 
     @Column(name = "user_agent")
-    private String userAgent; // Браузер
+    private String userAgent;
 
 }

@@ -2,10 +2,21 @@ package com.logistics.userauth.audit.adapter.out.persistence;
 
 import com.logistics.shared.audit_action.persistence.AuditActionTypeMapper;
 import com.logistics.userauth.audit.domain.AuditLog;
+import com.logistics.userauth.user.adapter.in.web.dto.UserDTO;
 import com.logistics.userauth.user.adapter.out.persistence.UserPersistenceMapper;
+import com.logistics.userauth.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * Маппер для преобразования между Domain AuditLog и Entity AuditLog.
+ *
+ * <h2>Назначение</h2>
+ * Конвертирует Domain → Entity и обратно.
+ *
+ * @see AuditLog для доменной сущности
+ * @see AuditLogEntity для сущности БД
+ */
 @Component
 @RequiredArgsConstructor
 public class AuditLogPersistenceMapper {

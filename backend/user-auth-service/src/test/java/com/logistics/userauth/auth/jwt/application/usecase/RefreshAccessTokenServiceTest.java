@@ -3,7 +3,7 @@ package com.logistics.userauth.auth.jwt.application.usecase;
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RefreshAccessTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
-import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
 import com.logistics.userauth.auth.session.domain.UserSession;
 import com.logistics.userauth.user.domain.User;
 import com.logistics.userauth.user.domain.UserRole;

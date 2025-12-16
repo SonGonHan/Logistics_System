@@ -115,6 +115,58 @@ public class SharedLibraryConfiguration {
 }
 
 
+=== backend/shared-library/src/main/java/com/logistics/shared/OpenApiConfig.java ===
+package com.logistics.shared;
+
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.info.Contact;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * Базовая конфигурация OpenAPI для всех микросервисов логистической системы.
+ *
+ * Предоставляет:
+ * - Единый формат документации
+ - Bearer JWT аутентификация
+ - Контактную информацию
+ *
+ * Использование: import в главном классе каждого сервиса.
+ *
+ */
+
+// * @see UserAuthServiceApplication
+
+@Configuration
+public class OpenApiConfig {
+
+    @Bean
+    public OpenAPI customOpenAPI() {
+        return new OpenAPI()
+                .info(new Info()
+                        .title("Logistics System API")
+                        .version("1.0.0")
+                        .description("REST API для системы логистики и управления доставкой")
+                        .contact(new Contact()
+                                .name("Logistics Development Team")
+                                .email("dev@logistics.com")
+                                .url("https://logistics.com")))
+                .addSecurityItem(new SecurityRequirement().addList("Bearer JWT"))
+                .components(new io.swagger.v3.oas.models.Components()
+                        .addSecuritySchemes("Bearer JWT",
+                                new SecurityScheme()
+                                        .type(SecurityScheme.Type.HTTP)
+                                        .scheme("bearer")
+                                        .bearerFormat("JWT")
+                                        .description("JWT access token для аутентификации. Вставьте токен без 'Bearer ' префикса.")));
+    }
+}
+
+
+
 === backend/shared-library/src/main/java/com/logistics/shared/audit_action/persistence/AuditActionTypeMapper.java ===
 package com.logistics.shared.audit_action.persistence;
 
@@ -666,6 +718,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
@@ -676,6 +729,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 })
 @EnableJpaRepositories(basePackages = "com.logistics.userauth.**.persistence")
 @EntityScan(basePackages = "com.logistics.userauth.**.persistence")
+@Import(com.logistics.shared.OpenApiConfig.class)
 public class UserAuthServiceApplication {
 
     public static void main(String[] args) {
@@ -687,7 +741,7 @@ public class UserAuthServiceApplication {
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/audit/app/out/AuditLogRepository.java ===
-package com.logistics.userauth.audit.app.out;
+package com.logistics.userauth.audit.application.out;
 
 
 import com.logistics.shared.audit_action.domain.AuditActionType;
@@ -939,7 +993,7 @@ package com.logistics.userauth.audit.adapter.out.persistence;
 
 import com.logistics.shared.audit_action.domain.AuditActionType;
 import com.logistics.shared.audit_action.persistence.AuditActionTypeMapper;
-import com.logistics.userauth.audit.app.out.AuditLogRepository;
+import com.logistics.userauth.audit.application.out.AuditLogRepository;
 import com.logistics.userauth.audit.domain.AuditLog;
 import com.logistics.userauth.user.adapter.out.persistence.UserPersistenceMapper;
 import com.logistics.userauth.user.domain.User;
@@ -1173,7 +1227,28 @@ import com.logistics.shared.validation.Phone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
 
+/**
+ * Запрос для регистрации нового пользователя.
+ *
+ * Валидация:
+ * - email: Должен быть в формате email
+ * - phone: Формат +7XXXXXXXXXX (Россия), +375XXXXXXXXX (Беларусь), +77XXXXXXXXX (Казахстан)
+ * - password: Минимум 8 символов, включая цифру, заглавную и строчную букву и спецсимвол
+ * - firstName, lastName: Не пусты
+ *
+ * Пример:
+ * {
+ *   "email": "john@example.com",
+ *   "phone": "+79991234567",
+ *   "password": "Password123!",
+ *   "firstName": "Иван",
+ *   "lastName": "Иванов",
+ *   "middleName": "Иванович"
+ * }
+ */
+@Builder
 public record SignUpRequest(
         @Email
         String email,
@@ -1191,7 +1266,6 @@ public record SignUpRequest(
         @NotBlank
         String lastName,
 
-        @NotBlank
         String middleName
 ) {}
 
@@ -1221,7 +1295,23 @@ import com.logistics.shared.validation.Password;
 import com.logistics.shared.validation.Phone;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
+import lombok.Builder;
 
+/**
+ * Запрос для авторизации пользователя.
+ *
+ * Валидация:
+ * - phone: Обязателен, формат +7/375/77...
+ * - password: Обязателен, сложный пароль
+ * - email: Опциональный альтернативный способ входа
+ *
+ * Пример:
+ * {
+ *   "phone": "+79991234567",
+ *   "password": "Password123!"
+ * }
+ */
+@Builder
 public record SignInRequest (
         @NotNull
         @Phone
@@ -1578,6 +1668,7 @@ public class LogisticsUserDetailsService implements UserDetailsService {
 === backend/user-auth-service/src/main/java/com/logistics/userauth/common/web/GlobalExceptionHandler.java ===
 package com.logistics.userauth.common.web;
 
+import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -1590,9 +1681,32 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Глобальный обработчик исключений для всех REST endpoints.
+ *
+ * Обеспечивает единообразный формат ошибок для всех API endpoints:
+ * {
+ *   "error": "ERROR_CODE",
+ *   "message": "Human-readable message",
+ *   "fields": { "fieldName": "error message" }  // только для VALIDATION_FAILED
+ * }
+ *
+ * Обработка исключений:
+ * - BadCredentialsException → 401 INVALID_CREDENTIALS
+ * - DataIntegrityViolationException → 409 CONFLICT
+ * - MethodArgumentNotValidException → 400 VALIDATION_FAILED
+ * - InvalidRefreshTokenException → 401 INVALID_REFRESH_TOKEN
+ * - Все остальные Exception → 500 INTERNAL_SERVER_ERROR
+ */
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * Обработка ошибок аутентификации (неверные учетные данные).
+     *
+     * @param ex BadCredentialsException
+     * @return ResponseEntity с кодом 401
+     */
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex) {
         Map<String, Object> body = new HashMap<>();
@@ -1601,6 +1715,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
+    /**
+     * Обработка ошибок целостности данных (duplicate keys, constraint violations).
+     *
+     * @param ex DataIntegrityViolationException
+     * @return ResponseEntity с кодом 409
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
         Map<String, Object> body = new HashMap<>();
@@ -1609,6 +1729,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
+    /**
+     * Обработка ошибок валидации входных параметров.
+     *
+     * @param ex MethodArgumentNotValidException
+     * @return ResponseEntity с кодом 400 и деталями ошибок по полям
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new HashMap<>();
@@ -1621,6 +1747,133 @@ public class GlobalExceptionHandler {
         body.put("fields", fieldErrors);
         return ResponseEntity.badRequest().body(body);
     }
+
+    /**
+     * Обработка ошибок невалидного refresh token.
+     *
+     * @param ex InvalidRefreshTokenException
+     * @return ResponseEntity с кодом 401
+     */
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "INVALID_REFRESH_TOKEN");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/common/api/LogoutOperation.java ===
+package com.logistics.userauth.common.api;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
+@Operation(
+        summary = "Выход из системы",
+        description = "Отзывает (revoke) refresh token, делая его неиспользуемым",
+        tags = {"Аутентификация"}
+)
+@ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "Успешный выход"),
+        @ApiResponse(responseCode = "401", description = "Refresh token невалиден")
+})
+public @interface LogoutOperation {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/common/api/SignInOperation.java ===
+package com.logistics.userauth.common.api;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
+@Operation(
+        summary = "Авторизация пользователя",
+        description = "Проверяет учетные данные пользователя (телефон/пароль) и выдает JWT access token и refresh token",
+        tags = {"Аутентификация"}
+)
+@ApiResponses(value = {
+        @ApiResponse(
+                responseCode = "200",
+                description = "Успешная авторизация",
+                content = @Content(mediaType = "application/json")
+        ),
+        @ApiResponse(
+                responseCode = "401",
+                description = "Неверные учетные данные (телефон или пароль)",
+                content = @Content(mediaType = "application/json")
+        ),
+        @ApiResponse(
+                responseCode = "400",
+                description = "Ошибка валидации входных данных"
+        )
+})
+public @interface SignInOperation {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/common/api/RefreshOperation.java ===
+package com.logistics.userauth.common.api;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
+@Operation(
+        summary = "Обновление access токена",
+        description = "Использует refresh token для выдачи нового access token и нового refresh token (token rotation)",
+        tags = {"Аутентификация"}
+)
+@ApiResponses(value = {
+        @ApiResponse(
+                responseCode = "200",
+                description = "Новые токены успешно выданы"
+        ),
+        @ApiResponse(
+                responseCode = "401",
+                description = "Refresh token невалиден, истек или был отозван"
+        )
+})
+public @interface RefreshOperation {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/common/api/SignUpOperation.java ===
+package com.logistics.userauth.common.api;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
+@Operation(
+        summary = "Регистрация нового пользователя",
+        description = "Создает новый аккаунт пользователя с ролью CLIENT и выдает JWT tokens",
+        tags = {"Аутентификация"}
+)
+@ApiResponses(value = {
+        @ApiResponse(
+                responseCode = "201",
+                description = "Пользователь успешно зарегистрирован"
+        ),
+        @ApiResponse(
+                responseCode = "409",
+                description = "Пользователь с таким телефоном или email уже существует"
+        ),
+        @ApiResponse(
+                responseCode = "400",
+                description = "Ошибка валидации входных данных"
+        )
+})
+public @interface SignUpOperation {
 }
 
 
@@ -1673,7 +1926,7 @@ public class RegisterUserService implements RegisterUserUseCase {
 
         var refreshToken = createRefreshTokenUseCase.create(
                 CreateRefreshTokenCommand.builder()
-                        .userId(user.getId())
+                        .userId(saved.getId())
                         .ipAddress(command.ipAddress())
                         .userAgent(command.userAgent())
                         .build()
@@ -1688,12 +1941,13 @@ public class RegisterUserService implements RegisterUserUseCase {
 package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.RefreshAccessTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RefreshAccessTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
-import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
 import com.logistics.userauth.auth.session.domain.UserSession;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -1701,6 +1955,18 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 
+/**
+ * Сервис для обновления access токена с использованием refresh токена.
+ *
+ * Реализует паттерн Token Rotation:
+ * 1. Принимает старый refresh token
+ * 2. Проверяет его валидность (не истек, не отозван)
+ * 3. Помечает старый refresh token как отозванный
+ * 4. Выдает новый access token и новый refresh token
+ *
+ * Это повышает безопасность: если refresh token будет скомпрометирован,
+ * злоумышленник сможет его использовать только один раз.
+ */
 @Service
 @RequiredArgsConstructor
 public class RefreshAccessTokenService implements RefreshAccessTokenUseCase {
@@ -1709,11 +1975,26 @@ public class RefreshAccessTokenService implements RefreshAccessTokenUseCase {
     private final TokenGeneratorPort tokenGenerator;
     private final InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
 
+    /**
+     * Обновляет access токен на основе refresh токена.
+     *
+     * @param command Команда содержит:
+     *                - refreshToken: старый refresh token
+     *                - ipAddress: IP-адрес клиента
+     *                - userAgent: браузер клиента
+     *
+     * @return JwtAuthenticationResponse с новыми access и refresh токенами
+     *
+     * @throws InvalidRefreshTokenException если:
+     *         - Токен не найден в БД
+     *         - Токен был отозван
+     *         - Токен истек (expiresAt < now)
+     */
     @Override
     @Transactional
     public JwtAuthenticationResponse refresh(RefreshAccessTokenCommand command) {
         var session = repository.findByRefreshToken(command.refreshToken())
-                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+                .orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
 
         validate(session);
 
@@ -1732,13 +2013,19 @@ public class RefreshAccessTokenService implements RefreshAccessTokenUseCase {
         return new JwtAuthenticationResponse(newAccessToken, newRefreshToken);
     }
 
+    /**
+     * Валидирует refresh token перед использованием.
+     *
+     * @param session Сессия пользователя
+     * @throws InvalidRefreshTokenException если токен отозван или истек
+     */
     private static void validate(UserSession session) {
         if (session.isRevoked()) {
-            throw new RuntimeException("Refresh token is revoked");
+            throw new InvalidRefreshTokenException("Refresh token is revoked");
         }
 
         if (session.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Refresh token is expired");
+            throw new InvalidRefreshTokenException("Refresh token is expired");
         }
     }
 }
@@ -1795,20 +2082,37 @@ public class AuthenticateUserService implements AuthenticateUserUseCase {
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/usecase/RevokeRefreshTokenService.java ===
 package com.logistics.userauth.auth.jwt.application.usecase;
 
+import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import com.logistics.userauth.auth.jwt.application.port.in.RevokeRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RevokeRefreshTokenCommand;
-import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
+/**
+ * Сервис для отзыва (revoke) refresh токенов.
+ *
+ * Отзыв токена делает его непригодным для дальнейшего использования.
+ * Используется при logout и других операциях завершения сессии.
+ *
+ * При попытке использовать отозванный токен для обновления access token
+ * будет выброшено исключение InvalidRefreshTokenException.
+ */
 @Service
 @RequiredArgsConstructor
 public class RevokeRefreshTokenService implements RevokeRefreshTokenUseCase {
-    private UserSessionRepository repository;
 
+    private final UserSessionRepository repository;
+
+    /**
+     * Отзывает refresh token, делая его неиспользуемым.
+     *
+     * @param command Команда содержит refreshToken для отзыва
+     *
+     * @throws InvalidRefreshTokenException если токен не найден в БД
+     */
     @Override
     public void revoke(RevokeRefreshTokenCommand command) {
-        var session = repository.findByRefreshToken(command.refreshToken()).orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+        var session = repository.findByRefreshToken(command.refreshToken()).orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
         session.setRevoked(true);
         repository.save(session);
     }
@@ -1821,7 +2125,7 @@ package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
-import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
 import com.logistics.userauth.auth.session.domain.UserSession;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import io.hypersistence.utils.hibernate.type.basic.Inet;
@@ -1832,6 +2136,19 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Внутренний сервис для создания refresh токенов.
+ *
+ * Отмечен как "Internal" (внутренний) потому что:
+ * - Не должен вызваться напрямую из контроллеров
+ * - Используется другими use cases (Register, Authenticate, Refresh)
+ * - Инкапсулирует логику создания и сохранения сессии
+ *
+ * Каждый refresh token уникален и привязан к:
+ * - Конкретному пользователю
+ * - Конкретному устройству (IP + User-Agent)
+ * - Определенному времени истечения (TTL из конфигурации)
+ */
 @Service
 @RequiredArgsConstructor
 public class InternalCreateRefreshTokenService implements InternalCreateRefreshTokenUseCase {
@@ -1842,6 +2159,20 @@ public class InternalCreateRefreshTokenService implements InternalCreateRefreshT
     @Value("${app.jwt.refresh-expiration}")
     private long refreshTokenTtlSeconds;
 
+    /**
+     * Создает новый refresh token для пользователя.
+     *
+     * @param command Команда содержит:
+     *                - userId: ID пользователя
+     *                - ipAddress: IP-адрес клиента
+     *                - userAgent: User-Agent браузера
+     *
+     * @return UUID строка, которая служит refresh токеном
+     *
+     * @throws RuntimeException если пользователь с таким ID не найден
+     *
+     * @see UserSession для деталей сохраненной сессии
+     */
     @Override
     public String create(CreateRefreshTokenCommand command) {
         var user = userRepository.findById(command.userId()).orElseThrow(() ->  new RuntimeException("User not found"));
@@ -2013,10 +2344,51 @@ public interface TokenGeneratorPort {
 
 
 
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/application/exception/InvalidRefreshTokenException.java ===
+package com.logistics.userauth.auth.jwt.application.exception;
+
+import com.logistics.userauth.auth.jwt.application.usecase.RefreshAccessTokenService;
+import com.logistics.userauth.common.web.GlobalExceptionHandler;
+
+/**
+ * Исключение выбрасываемое когда refresh token невалиден или не может быть использован.
+ *
+ * Случаи когда выбрасывается:
+ * 1. Token not found: Токен отсутствует в БД
+ * 2. Token expired: Токен истек (current time > expiresAt)
+ * 3. Token revoked: Токен был явно отозван (revoked = true)
+ * 4. Token rotated: Токен был заменен на новый (pattern token rotation)
+ *
+ * HTTP ответ: 401 Unauthorized
+ *
+ * Обработка: @ExceptionHandler в GlobalExceptionHandler возвращает
+ * {
+ *   "error": "INVALID_REFRESH_TOKEN",
+ *   "message": "..."
+ * }
+ *
+ * @see GlobalExceptionHandler для обработки этого исключения
+ * @see RefreshAccessTokenService где выбрасывается
+ */
+public class InvalidRefreshTokenException extends RuntimeException {
+    /**
+     * Создает новое исключение с сообщением об ошибке.
+     *
+     * @param message Человеко-читаемое описание причины (будет возвращено клиенту)
+     */
+    public InvalidRefreshTokenException(String message) {
+        super(message);
+    }
+}
+
+
+
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/adapter/in/security/JwtAuthenticationFilter.java ===
 package com.logistics.userauth.auth.jwt.adapter.in.security;
 
+import com.logistics.userauth.auth.jwt.adapter.out.JwtTokenProvider;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.auth.jwt.infrastructure.security.SecurityConfiguration;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -2034,6 +2406,28 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Фильтр для аутентификации запросов на основе JWT токенов.
+ *
+ * Применяется ко ВСЕМ запросам кроме /auth/** endpoints.
+ *
+ * Процесс:
+ * 1. Читает header Authorization
+ * 2. Извлекает Bearer токен
+ * 3. Валидирует токен через JwtTokenProvider
+ * 4. Извлекает userId из токена
+ * 5. Загружает пользователя из БД
+ * 6. Создает Authentication объект и устанавливает в SecurityContext
+ * 7. Передает запрос дальше по цепочке
+ *
+ * Если токен невалиден:
+ * - Запрос передается дальше БЕЗ аутентификации
+ * - Spring Security вернет 403 Forbidden для защищенных ресурсов
+ *
+ * Интеграция:
+ * @see SecurityConfiguration где регистрируется этот фильтр
+ * @see JwtTokenProvider для валидации токенов
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -2044,6 +2438,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final TokenGeneratorPort tokenGenerator;
     private final UserRepository userRepository;
 
+    /**
+     * Выполняет фильтрацию и аутентификацию.
+     *
+     * @param request HTTP запрос
+     * @param response HTTP ответ
+     * @param filterChain Цепочка фильтров
+     */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -2086,6 +2487,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * Исключает /auth/** endpoints из обработки этого фильтра.
+     *
+     * @param request HTTP запрос
+     * @return true если запрос НЕ должен быть обработан этим фильтром
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
@@ -2100,6 +2507,23 @@ package com.logistics.userauth.auth.jwt.adapter.in.web.dto;
 
 import lombok.Builder;
 
+/**
+ * Ответ с JWT токенами после успешной аутентификации или регистрации.
+ *
+ * Содержит:
+ * - accessToken: JWT токен для доступа к защищенным ресурсам (TTL: 15-60 минут)
+ * - refreshToken: Токен для получения нового accessToken без повторной аутентификации (TTL: 7-30 дней)
+ *
+ * Пример:
+ * {
+ *   "accessToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNjk3NTAwMzIzfQ.xxxx",
+ *   "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
+ * }
+ *
+ * Использование:
+ * 1. accessToken используется в header: Authorization: Bearer {accessToken}
+ * 2. refreshToken хранится безопасно на клиенте (при истечении accessToken)
+ */
 @Builder
 public record JwtAuthenticationResponse (String accessToken, String refreshToken) {
 }
@@ -2108,6 +2532,18 @@ public record JwtAuthenticationResponse (String accessToken, String refreshToken
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/adapter/in/web/dto/RefreshTokenRequest.java ===
 package com.logistics.userauth.auth.jwt.adapter.in.web.dto;
 
+/**
+ * Запрос для обновления access token или выхода из системы.
+ *
+ * Используется для:
+ * 1. POST /auth/refresh - получить новый access token
+ * 2. POST /auth/logout - отозвать (invalidate) текущую сессию
+ *
+ * Пример:
+ * {
+ *   "refreshToken": "550e8400-e29b-41d4-a716-446655440000"
+ * }
+ */
 public record RefreshTokenRequest(String refreshToken) {
 }
 
@@ -2126,8 +2562,16 @@ import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateU
 import com.logistics.userauth.auth.jwt.application.port.in.command.RefreshAccessTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RevokeRefreshTokenCommand;
+import com.logistics.userauth.common.api.LogoutOperation;
+import com.logistics.userauth.common.api.RefreshOperation;
+import com.logistics.userauth.common.api.SignInOperation;
+import com.logistics.userauth.common.api.SignUpOperation;
 import com.logistics.userauth.user.adapter.in.web.dto.SignInRequest;
 import com.logistics.userauth.user.adapter.in.web.dto.SignUpRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -2138,6 +2582,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/auth")
+@Tag(
+        name = "Аутентификация",
+        description = "REST API endpoints для регистрации, логина, refresh токенов и выхода из системы"
+)
 public class AuthController {
     private final AuthenticateUserUseCase authenticateUserUseCase;
     private final RegisterUserUseCase registerUserUseCase;
@@ -2145,6 +2593,7 @@ public class AuthController {
     private final RevokeRefreshTokenUseCase revokeRefreshTokenUseCase;
 
     @PostMapping("/sign-in")
+    @SignInOperation
     public ResponseEntity<JwtAuthenticationResponse> signIn(
             @Valid @RequestBody SignInRequest request,
             HttpServletRequest httpRequest
@@ -2158,32 +2607,9 @@ public class AuthController {
         return ResponseEntity.ok(authenticateUserUseCase.authenticate(command));
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<JwtAuthenticationResponse> refresh(
-            @Valid @RequestBody RefreshTokenRequest request,
-            HttpServletRequest httpRequest
-    ) {
-        var command = RefreshAccessTokenCommand.builder()
-                .refreshToken(request.refreshToken())
-                .ipAddress(httpRequest.getRemoteAddr())
-                .userAgent(httpRequest.getHeader("User-Agent"))
-                .build();
-
-        return ResponseEntity.ok(refreshAccessTokenUseCase.refresh(command));
-    }
-
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
-        var command = RevokeRefreshTokenCommand.builder()
-                .refreshToken(request.refreshToken())
-                .build();
-
-        revokeRefreshTokenUseCase.revoke(command);
-        return ResponseEntity.noContent().build();
-    }
-
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
+    @SignUpOperation
     public ResponseEntity<JwtAuthenticationResponse> signUp(
             @Valid @RequestBody SignUpRequest request,
             HttpServletRequest httpRequest
@@ -2202,6 +2628,33 @@ public class AuthController {
         var response = registerUserUseCase.register(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @PostMapping("/logout")
+    @LogoutOperation
+    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
+        var command = RevokeRefreshTokenCommand.builder()
+                .refreshToken(request.refreshToken())
+                .build();
+
+        revokeRefreshTokenUseCase.revoke(command);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/refresh")
+    @RefreshOperation
+    public ResponseEntity<JwtAuthenticationResponse> refresh(
+            @Valid @RequestBody RefreshTokenRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        var command = RefreshAccessTokenCommand.builder()
+                .refreshToken(request.refreshToken())
+                .ipAddress(httpRequest.getRemoteAddr())
+                .userAgent(httpRequest.getHeader("User-Agent"))
+                .build();
+
+        return ResponseEntity.ok(refreshAccessTokenUseCase.refresh(command));
+    }
+
 }
 
 
@@ -2209,6 +2662,7 @@ public class AuthController {
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/adapter/out/JwtTokenProvider.java ===
 package com.logistics.userauth.auth.jwt.adapter.out;
 
+import com.logistics.userauth.auth.jwt.adapter.in.security.JwtAuthenticationFilter;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
 import com.logistics.userauth.user.domain.User;
 import io.jsonwebtoken.Claims;
@@ -2224,6 +2678,24 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 
+/**
+ * Провайдер для генерации и валидации JWT access токенов.
+ *
+ * Использует HS256 (HMAC SHA256) алгоритм подписания.
+ *
+ * Структура JWT:
+ * - Header: { "alg": "HS256" }
+ * - Payload: { "sub": "userId", "iat": timestamp, "exp": timestamp, "phone": "...", "role": "..." }
+ * - Signature: HMAC(secret, header.payload)
+ *
+ * Конфигурация в application.yml:
+ * app:
+ *   jwt:
+ *     secret: "your-secret-key-change-in-production"
+ *     expiration: 3600  # 1 час в секундах
+ *
+ * @see JwtAuthenticationFilter для проверки токена в каждом запросе
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtTokenProvider implements TokenGeneratorPort {
@@ -2234,6 +2706,12 @@ public class JwtTokenProvider implements TokenGeneratorPort {
     @Value("${app.jwt.expiration}")
     private long accessTokenTtlSeconds;
 
+    /**
+     * Генерирует новый JWT access token для пользователя.
+     *
+     * @param user Пользователь, для которого создается токен
+     * @return Подписанный JWT токен в виде строки
+     */
     @Override
     public String generateAccessToken(User user) {
         Instant now = Instant.now();
@@ -2249,6 +2727,12 @@ public class JwtTokenProvider implements TokenGeneratorPort {
                 .compact();
     }
 
+    /**
+     * Проверяет валидность JWT токена.
+     *
+     * @param token JWT токен для проверки
+     * @return true если токен валиден и не истек
+     */
     @Override
     public boolean isTokenValid(String token) {
         try {
@@ -2259,6 +2743,12 @@ public class JwtTokenProvider implements TokenGeneratorPort {
         }
     }
 
+    /**
+     * Извлекает ID пользователя из JWT токена.
+     *
+     * @param token JWT токен
+     * @return ID пользователя (значение "sub" claim)
+     */
     @Override
     public Long extractUserId(String token) {
         Claims claims = parseClaims(token);
@@ -2305,6 +2795,24 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Конфигурация Spring Security для JWT-based аутентификации.
+ *
+ * Особенности:
+ * - Stateless сессии (не используются cookies и sessions)
+ * - CSRF отключен (для REST API с JWT не требуется)
+ * - JWT фильтр регистрируется в цепочке безопасности
+ * - /auth/** endpoints открыты для всех
+ * - Остальные endpoints требуют валидный JWT токен
+ *
+ * Архитектура:
+ * 1. JwtAuthenticationFilter → извлекает и валидирует токен
+ * 2. AuthenticationProvider → аутентифицирует user/password при логине
+ * 3. SecurityFilterChain → определяет какие endpoint защищены
+ *
+ * @see JwtAuthenticationFilter для деталей обработки JWT
+ * @see LogisticsUserDetailsService для загрузки пользователя из БД
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -2315,6 +2823,12 @@ public class SecurityConfiguration {
 
     private final LogisticsUserDetailsService userDetailsService;
 
+    /**
+     * Определяет цепочку фильтров безопасности.
+     *
+     * @param http HttpSecurity для конфигурации
+     * @return SecurityFilterChain
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
@@ -2332,7 +2846,23 @@ public class SecurityConfiguration {
                         // при необходимости добавь swagger / actuator и т.п.
                         //.requestMatchers("/v3/api-docs/**", "/swagger-ui/**").permitAll()
                         // всё остальное — только с валидным JWT
+                        .requestMatchers(
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/index.html",
+                                "/webjars/**"
+                        ).permitAll()
+//
+//                        // на всякий случай, если матчер у вас учитывает context-path
+//                        .requestMatchers(
+//                                "/api/v1/v3/api-docs/**",
+//                                "/api/v1/swagger-ui/**",
+//                                "/api/v1/swagger-ui.html",
+//                                "/api/v1/webjars/**"
+//                        ).permitAll()
                         .anyRequest().authenticated()
+
                 )
 
                 // Указываем, как аутентифицировать username/password (используется при логине)
@@ -2344,14 +2874,19 @@ public class SecurityConfiguration {
         return http.build();
     }
 
+    /**
+     * Провайдер аутентификации для username/password при логине.
+     *
+     * @return AuthenticationProvider
+     */
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        // сюда подложи свой UserDetailsService-адаптер поверх доменного UserRepository
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
+
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -2368,7 +2903,7 @@ public class SecurityConfiguration {
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/application/ports/out/UserSessionRepository.java ===
-package com.logistics.userauth.auth.session.application.ports.out;
+package com.logistics.userauth.auth.session.application.port.out;
 
 import com.logistics.userauth.auth.session.domain.UserSession;
 import com.logistics.userauth.user.domain.User;
@@ -2390,16 +2925,34 @@ public interface UserSessionRepository {
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/domain/UserSession.java ===
 package com.logistics.userauth.auth.session.domain;
 
+import com.logistics.userauth.auth.session.adapter.out.persistence.UserSessionEntity;
 import com.logistics.userauth.user.domain.User;
 import io.hypersistence.utils.hibernate.type.basic.Inet;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
-@Data
+/**
+ * Доменная модель для сессии пользователя.
+ *
+ * Представляет активную сессию пользователя с привязанным refresh токеном.
+ *
+ * Жизненный цикл сессии:
+ * 1. СОЗДАНИЕ: При регистрации или логине создается новая сессия с refresh токеном
+ * 2. ИСПОЛЬЗОВАНИЕ: Клиент использует refresh токен для получения новых access токенов
+ * 3. ROTATION: При каждом использовании старый refresh токен помечается как revoked
+ * 4. ИСТЕЧЕНИЕ: По истечении TTL сессия удаляется из БД (очистка кроном)
+ *
+ * Безопасность:
+ * - Refresh token уникален для каждой сессии
+ * - Привязан к IP-адресу и User-Agent для дополнительной защиты
+ * - Может быть явно отозван пользователем (logout)
+ * - Имеет ограниченное время жизни (TTL)
+ *
+ * @see UserSessionEntity JPA представление в БД
+ */
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
@@ -2407,18 +2960,25 @@ public class UserSession {
 
     private long id;
 
+    /** Пользователь, которому принадлежит сессия */
     private User user;
 
+    /** UUID токен для обновления access token */
     private String refreshToken;
 
+    /** Время создания сессии */
     private LocalDateTime createdAt;
 
+    /** Время истечения сессии (обычно +7 дней от создания) */
     private LocalDateTime expiresAt;
 
+    /** IP-адрес клиента для аудита и безопасности */
     private Inet ipAddress;
 
+    /** User-Agent браузера для идентификации устройства */
     private String userAgent;
 
+    /** Флаг отзыва: true = токен больше не может быть использован */
     private boolean revoked;
 
 }
@@ -2480,34 +3040,57 @@ public record UserSessionDTO (LocalDateTime createdAt,
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/adapter/out/persistence/UserSessionEntity.java ===
 package com.logistics.userauth.auth.session.adapter.out.persistence;
 
+import com.logistics.userauth.auth.session.domain.UserSession;
 import com.logistics.userauth.user.adapter.out.persistence.UserEntity;
 import io.hypersistence.utils.hibernate.type.basic.Inet;
 import io.hypersistence.utils.hibernate.type.basic.PostgreSQLInetType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.Type;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.LocalDateTime;
-
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+/**
+ * JPA Entity для хранения сессий пользователей и их refresh токенов.
+ *
+ * Таблица: user_management.user_sessions
+ *
+ * Основные поля:
+ * - sessionId: Уникальный ID сессии (первичный ключ)
+ * - userId: Внешний ключ на таблицу users
+ * - refreshToken: UUID токен для обновления access token
+ * - expiresAt: Время истечения refresh token (обычно 7-30 дней)
+ * - createdAt: Время создания сессии
+ * - revoked: Флаг отзыва (true = токен больше не валиден)
+ * - ipAddress: IP-адрес клиента (для аудита)
+ * - userAgent: User-Agent браузера (для аудита)
+ *
+ * Индексы:
+ * - idx_user_sessions_user_id: для быстрого поиска сессий пользователя
+ * - idx_user_sessions_expires_at: для очистки истекших сессий
+ *
+ * Уникальные ограничения:
+ * - refresh_token должен быть уникален (один токен = одна сессия)
+ *
+ * @see UserSession доменная модель
+ * @see UserSessionPersistenceMapper преобразование Entity ↔ Domain
+ */
 @Entity
 @Table(
         name = "user_sessions",
         schema = "user_management",
         uniqueConstraints = {
-                @UniqueConstraint(columnNames = "session_token")
+                @UniqueConstraint(columnNames = "refresh_token")
         },
         indexes = {
                 @Index(columnList = "user_id", name = "idx_user_sessions_user_id"),
                 @Index(columnList = "expires_at", name = "idx_user_sessions_expires_at")
         }
 )
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class UserSessionEntity {
 
@@ -2596,7 +3179,7 @@ public class UserSessionPersistenceMapper {
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/session/adapter/out/persistence/UserSessionPersistenceAdapter.java ===
 package com.logistics.userauth.auth.session.adapter.out.persistence;
 
-import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
 import com.logistics.userauth.auth.session.domain.UserSession;
 import com.logistics.userauth.user.domain.User;
 import lombok.RequiredArgsConstructor;
@@ -2655,6 +3238,31 @@ public interface UserSessionJpaRepository extends JpaRepository<UserSessionEntit
 
 
 
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/auth/package-info.java ===
+/**
+ * Компоненты аутентификации и авторизации на основе JWT.
+ *
+ * <h3>Процесс аутентификации:</h3>
+ * <ol>
+ *   <li>Пользователь отправляет телефон/email + пароль</li>
+ *   <li>Система валидирует данные через {@link com.logistics.userauth.auth.jwt.application.usecase.AuthenticateUserService}</li>
+ *   <li>Генерируются access (15 мин) и refresh (7 дней) токены</li>
+ *   <li>Refresh токен сохраняется в Redis с привязкой к IP/User-Agent</li>
+ * </ol>
+ *
+ * <h3>Основные компоненты:</h3>
+ * <table border="1">
+ *   <tr><th>Компонент</th><th>Назначение</th></tr>
+ *   <tr><td>JwtTokenProvider</td><td>Генерация и валидация токенов</td></tr>
+ *   <tr><td>JwtAuthenticationFilter</td><td>Spring Security фильтр</td></tr>
+ *   <tr><td>SignInService</td><td>Use case регистрации</td></tr>
+ * </table>
+ *
+ * @since 1.0.0
+ */
+package com.logistics.userauth.auth;
+
+
 === backend/user-auth-service/src/test/java/com/logistics/userauth/UserAuthServiceApplicationTests.java ===
 package com.logistics.userauth;
 
@@ -2662,7 +3270,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @IntegrationTest
-@DisplayName("Тесты загрузки контекста для UserAuth Service")
+@DisplayName("UserAuth Service: тесты загрузки контекста")
 class UserAuthServiceApplicationTests {
 
     @Test
@@ -2724,7 +3332,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Тесты для AuditLogPersistenceMapper")
+@DisplayName("AuditLogPersistenceMapper: юнит-тесты")
 class AuditLogPersistenceMapperTest {
 
     @Mock
@@ -2832,7 +3440,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
-@DisplayName("Интеграционные тесты для AuditLogJpaRepository")
+@DisplayName("AuditLogJpaRepository: интеграционные тесты")
 class AuditLogJpaRepositoryIntegrationTest {
     @Autowired
     private AuditLogJpaRepository repository;
@@ -2867,12 +3475,6 @@ class AuditLogJpaRepositoryIntegrationTest {
                 .build();
 
         testActionType = actionTypeRepository.save(testActionType);
-    }
-
-    @Test
-    @DisplayName("Контекст загружается успешно")
-    void contextLoads() {
-        assertThat(repository).isNotNull();
     }
 
     @Test
@@ -2962,7 +3564,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
 @Transactional
-@DisplayName("Интеграционные тесты для UserPersistenceAdapter")
+@DisplayName("UserPersistenceAdapter: интеграционные тесты")
 class UserPersistenceAdapterIntegrationTest {
 
     @Autowired
@@ -3010,17 +3612,11 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
-@DisplayName("Интеграционные тесты для UserJpaRepository")
+@DisplayName("UserJpaRepository: интеграционные тесты")
 class UserJpaRepositoryIntegrationTest {
 
     @Autowired
     private UserJpaRepository repository;
-
-    @Test
-    @DisplayName("Контекст загружается успешно")
-    void contextLoads() {
-        assertThat(repository).isNotNull();
-    }
 
     @Test
     @DisplayName("Должен сохранить и найти User по ID")
@@ -3063,7 +3659,7 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("Тесты для UserPersistenceMapper")
+@DisplayName("UserPersistenceMapper: юнит-тесты")
 class UserPersistenceMapperTest {
 
     private UserPersistenceMapper mapper;
@@ -3136,6 +3732,7 @@ class UserPersistenceMapperTest {
 === backend/user-auth-service/src/test/java/com/logistics/userauth/common/web/GlobalExceptionHandlerTest.java ===
 package com.logistics.userauth.common.web;
 
+import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -3211,6 +3808,410 @@ class GlobalExceptionHandlerTest {
         Map<String, String> fields = (Map<String, String>) response.getBody().get("fields");
         assertThat(fields).containsEntry("phone", "Неверный формат телефона");
     }
+
+    @Test
+    @DisplayName("Должен обработать InvalidRefreshTokenException и вернуть 401")
+    void shouldHandleInvalidRefreshToken() {
+        // Given
+        var exception = new InvalidRefreshTokenException("Invalid refresh token");
+
+        // When
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleInvalidRefreshToken(exception);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("error")).isEqualTo("INVALID_REFRESH_TOKEN");
+        assertThat(response.getBody().get("message")).isEqualTo("Invalid refresh token");
+    }
+
+    @Test
+    @DisplayName("Должен обработать InvalidRefreshTokenException с сообщением об истечении срока")
+    void shouldHandleExpiredRefreshToken() {
+        // Given
+        var exception = new InvalidRefreshTokenException("Refresh token has expired");
+
+        // When
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleInvalidRefreshToken(exception);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("error")).isEqualTo("INVALID_REFRESH_TOKEN");
+        assertThat(response.getBody().get("message")).isEqualTo("Refresh token has expired");
+    }
+
+    @Test
+    @DisplayName("Должен обработать InvalidRefreshTokenException с сообщением об отзыве")
+    void shouldHandleRevokedRefreshToken() {
+        // Given
+        var exception = new InvalidRefreshTokenException("Refresh token has been revoked");
+
+        // When
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleInvalidRefreshToken(exception);
+
+        // Then
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("error")).isEqualTo("INVALID_REFRESH_TOKEN");
+        assertThat(response.getBody().get("message")).isEqualTo("Refresh token has been revoked");
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/application/usecase/RevokeRefreshTokenServiceTest.java ===
+package com.logistics.userauth.auth.jwt.application.usecase;
+
+import com.logistics.userauth.auth.jwt.application.port.in.command.RevokeRefreshTokenCommand;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.domain.UserSession;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("RevokeRefreshTokenService: юнит-тесты")
+class RevokeRefreshTokenServiceTest {
+
+    @Mock
+    private UserSessionRepository repository;
+
+    @InjectMocks
+    private RevokeRefreshTokenService service;
+
+    @Test
+    @DisplayName("Должен отозвать валидный refresh токен")
+    void shouldRevokeValidRefreshToken() {
+        // Given
+        var session = UserSession.builder()
+                .id(1L)
+                .refreshToken("valid-token")
+                .revoked(false)
+                .build();
+
+        var command = RevokeRefreshTokenCommand.builder()
+                .refreshToken("valid-token")
+                .build();
+
+        when(repository.findByRefreshToken("valid-token"))
+                .thenReturn(Optional.of(session));
+
+        // When
+        service.revoke(command);
+
+        // Then
+        verify(repository).save(argThat(s -> s.isRevoked()));
+    }
+
+    @Test
+    @DisplayName("Должен выбросить исключение для несуществующего токена")
+    void shouldThrowExceptionForNonExistentToken() {
+        // Given
+        var command = RevokeRefreshTokenCommand.builder()
+                .refreshToken("non-existent-token")
+                .build();
+
+        when(repository.findByRefreshToken("non-existent-token"))
+                .thenReturn(Optional.empty());
+
+        // Then
+        assertThatThrownBy(() -> service.revoke(command))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Invalid refresh token");
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/application/usecase/RefreshAccessTokenServiceTest.java ===
+package com.logistics.userauth.auth.jwt.application.usecase;
+
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.command.RefreshAccessTokenCommand;
+import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.domain.UserSession;
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("RefreshAccessTokenService: юнит-тесты")
+class RefreshAccessTokenServiceTest {
+
+    @Mock
+    private UserSessionRepository repository;
+
+    @Mock
+    private TokenGeneratorPort tokenGenerator;
+
+    @Mock
+    private InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
+
+    @InjectMocks
+    private RefreshAccessTokenService service;
+
+    @Test
+    @DisplayName("Должен обновить токены для валидного refresh токена")
+    void shouldRefreshTokensForValidRefreshToken() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .phone("79991234567")
+                .role(UserRole.CLIENT)
+                .build();
+
+        var session = UserSession.builder()
+                .id(1L)
+                .user(user)
+                .refreshToken("old-refresh-token")
+                .expiresAt(LocalDateTime.now().plusDays(1))
+                .revoked(false)
+                .build();
+
+        var command = RefreshAccessTokenCommand.builder()
+                .refreshToken("old-refresh-token")
+                .ipAddress("192.168.1.1")
+                .userAgent("Mozilla/5.0")
+                .build();
+
+        when(repository.findByRefreshToken("old-refresh-token"))
+                .thenReturn(Optional.of(session));
+        when(tokenGenerator.generateAccessToken(user))
+                .thenReturn("new-access-token");
+        when(createRefreshTokenUseCase.create(any()))
+                .thenReturn("new-refresh-token");
+
+        // When
+        var response = service.refresh(command);
+
+        // Then
+        assertThat(response.accessToken()).isEqualTo("new-access-token");
+        assertThat(response.refreshToken()).isEqualTo("new-refresh-token");
+
+        // Проверяем, что старая сессия отозвана
+        verify(repository).save(argThat(s -> s.isRevoked()));
+
+        // Проверяем, что создан новый refresh токен
+        verify(createRefreshTokenUseCase).create(any());
+    }
+
+    @Test
+    @DisplayName("Должен выбросить исключение для невалидного refresh токена")
+    void shouldThrowExceptionForInvalidRefreshToken() {
+        // Given
+        var command = RefreshAccessTokenCommand.builder()
+                .refreshToken("invalid-token")
+                .ipAddress("192.168.1.1")
+                .userAgent("Mozilla/5.0")
+                .build();
+
+        when(repository.findByRefreshToken("invalid-token"))
+                .thenReturn(Optional.empty());
+
+        // Then
+        assertThatThrownBy(() -> service.refresh(command))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Invalid refresh token");
+    }
+
+    @Test
+    @DisplayName("Должен выбросить исключение для отозванного токена")
+    void shouldThrowExceptionForRevokedToken() {
+        // Given
+        var session = UserSession.builder()
+                .refreshToken("revoked-token")
+                .revoked(true)
+                .expiresAt(LocalDateTime.now().plusDays(1))
+                .build();
+
+        var command = RefreshAccessTokenCommand.builder()
+                .refreshToken("revoked-token")
+                .build();
+
+        when(repository.findByRefreshToken("revoked-token"))
+                .thenReturn(Optional.of(session));
+
+        // Then
+        assertThatThrownBy(() -> service.refresh(command))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("revoked");
+    }
+
+    @Test
+    @DisplayName("Должен выбросить исключение для истекшего токена")
+    void shouldThrowExceptionForExpiredToken() {
+        // Given
+        var session = UserSession.builder()
+                .refreshToken("expired-token")
+                .revoked(false)
+                .expiresAt(LocalDateTime.now().minusDays(1)) // Истёк вчера
+                .build();
+
+        var command = RefreshAccessTokenCommand.builder()
+                .refreshToken("expired-token")
+                .build();
+
+        when(repository.findByRefreshToken("expired-token"))
+                .thenReturn(Optional.of(session));
+
+        // Then
+        assertThatThrownBy(() -> service.refresh(command))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("expired");
+    }
+}
+
+
+
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/application/usecase/InternalCreateRefreshTokenServiceTest.java ===
+// backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/application/usecase/InternalCreateRefreshTokenServiceTest.java
+package com.logistics.userauth.auth.jwt.application.usecase;
+
+import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.domain.UserSession;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import com.logistics.userauth.user.domain.User;
+import com.logistics.userauth.user.domain.UserRole;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("InternalCreateRefreshTokenService: юнит-тесты")
+class InternalCreateRefreshTokenServiceTest {
+
+    @Mock
+    private UserSessionRepository sessionRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private InternalCreateRefreshTokenService service;
+
+    @Test
+    @DisplayName("Должен создать refresh токен для валидного пользователя")
+    void shouldCreateRefreshTokenForValidUser() {
+        // Given
+        ReflectionTestUtils.setField(service, "refreshTokenTtlSeconds", 604800L);
+
+        var user = User.builder()
+                .id(1L)
+                .phone("79991234567")
+                .role(UserRole.CLIENT)
+                .build();
+
+        var command = CreateRefreshTokenCommand.builder()
+                .userId(1L)
+                .ipAddress("192.168.1.1")
+                .userAgent("Mozilla/5.0")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        // When
+        String refreshToken = service.create(command);
+
+        // Then
+        assertThat(refreshToken).isNotNull();
+        assertThat(refreshToken).isNotEmpty();
+
+        // Проверяем, что сессия сохранена
+        ArgumentCaptor<UserSession> sessionCaptor = ArgumentCaptor.forClass(UserSession.class);
+        verify(sessionRepository).save(sessionCaptor.capture());
+
+        UserSession savedSession = sessionCaptor.getValue();
+        assertThat(savedSession.getUser()).isEqualTo(user);
+        assertThat(savedSession.getRefreshToken()).isEqualTo(refreshToken);
+        assertThat(savedSession.isRevoked()).isFalse();
+        assertThat(savedSession.getExpiresAt()).isAfter(LocalDateTime.now());
+    }
+
+    @Test
+    @DisplayName("Должен выбросить исключение, если пользователь не найден")
+    void shouldThrowExceptionWhenUserNotFound() {
+        // Given
+        var command = CreateRefreshTokenCommand.builder()
+                .userId(999L)
+                .ipAddress("192.168.1.1")
+                .userAgent("Mozilla/5.0")
+                .build();
+
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Then
+        assertThatThrownBy(() -> service.create(command))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("User not found");
+    }
+
+    @Test
+    @DisplayName("Должен создать токен с IP и User-Agent")
+    void shouldCreateTokenWithIpAndUserAgent() {
+        // Given
+        ReflectionTestUtils.setField(service, "refreshTokenTtlSeconds", 604800L);
+
+        var user = User.builder().id(1L).build();
+        var command = CreateRefreshTokenCommand.builder()
+                .userId(1L)
+                .ipAddress("10.0.0.1")
+                .userAgent("Chrome/120")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        // When
+        service.create(command);
+
+        // Then
+        ArgumentCaptor<UserSession> captor = ArgumentCaptor.forClass(UserSession.class);
+        verify(sessionRepository).save(captor.capture());
+
+        UserSession session = captor.getValue();
+        assertThat(session.getIpAddress()).isNotNull();
+        assertThat(session.getUserAgent()).isEqualTo("Chrome/120");
+    }
 }
 
 
@@ -3219,6 +4220,7 @@ class GlobalExceptionHandlerTest {
 package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
 import com.logistics.userauth.user.application.port.out.UserRepository;
@@ -3240,10 +4242,11 @@ import java.util.Optional;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Тесты для AuthenticateUserService")
+@DisplayName("AuthenticateUserService: юнит-тесты")
 public class AuthenticateUserServiceTest {
 
     @Mock
@@ -3254,6 +4257,9 @@ public class AuthenticateUserServiceTest {
 
     @Mock
     private TokenGeneratorPort tokenGenerator;
+
+    @Mock
+    private InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
 
     @InjectMocks
     private AuthenticateUserService service;
@@ -3289,13 +4295,16 @@ public class AuthenticateUserServiceTest {
         when(userRepository.findByPhone("79991234567")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("Password123!", "HASH")).thenReturn(true);
         when(tokenGenerator.generateAccessToken(any(User.class))).thenReturn("jwt-token");
-
+        when(createRefreshTokenUseCase.create(any())).thenReturn("refresh-token");
         // when
         JwtAuthenticationResponse response = service.authenticate(command);
 
         // then
         assertThat(response).isNotNull();
         assertThat(response.accessToken()).isEqualTo("jwt-token");
+        assertThat(response.refreshToken()).isEqualTo("refresh-token");
+
+        verify(createRefreshTokenUseCase).create(any());
     }
 
     @Test
@@ -3345,6 +4354,7 @@ package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.IntegrationTest;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
 import com.logistics.userauth.user.application.port.out.UserRepository;
@@ -3366,7 +4376,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Тесты для RegisterUserService")
+@DisplayName("RegisterUserService: юнит-тесты")
 public class RegisterUserServiceTest {
 
 
@@ -3379,6 +4389,9 @@ public class RegisterUserServiceTest {
     @Mock
     private TokenGeneratorPort tokenGenerator;
 
+    @Mock
+    private InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
+
     @InjectMocks
     private RegisterUserService service;
 
@@ -3386,14 +4399,16 @@ public class RegisterUserServiceTest {
     @DisplayName("Должен зарегистрировать пользователя и вернуть JWT-токен")
     void shouldRegisterUserAndReturnJwt() {
         // given
-        var command = new RegisterUserCommand(
-                "test@example.com",
-                "79991234567",
-                "rawPass",
-                "Ivan",
-                "Ivanov",
-                "Ivanovich"
-        );
+        var command = RegisterUserCommand.builder()
+                .email("test@example.com")
+                .phone("79991234567")
+                .rawPassword("rawPass")
+                .firstName("Ivan")
+                .lastName("Ivanov")
+                .middleName("Ivanovich")
+                .ipAddress("192.168.1.1")
+                .userAgent("Mozilla/5.0")
+                .build();
 
         var savedUser = User.builder()
                 .id(1L)
@@ -3409,15 +4424,18 @@ public class RegisterUserServiceTest {
 
         when(passwordEncoder.encode("rawPass")).thenReturn("encodedPass");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(tokenGenerator.generateAccessToken(savedUser)).thenReturn("jwt-token");
-
+        when(tokenGenerator.generateAccessToken(savedUser)).thenReturn("access-token");
+        when(createRefreshTokenUseCase.create(any())).thenReturn("refresh-token");
         // when
         var response = service.register(command);
 
         // then
-        assertEquals("jwt-token", response.token());
+        assertThat(response.accessToken()).isEqualTo("access-token");
+        assertThat(response.refreshToken()).isEqualTo("refresh-token");
+
         verify(userRepository).save(any(User.class));
         verify(tokenGenerator).generateAccessToken(savedUser);
+        verify(createRefreshTokenUseCase).create(any());
     }
 }
 
@@ -3501,29 +4519,36 @@ public class JwtTokenProviderTest {
 
 
 
-=== backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/AuthIntegrationTest.java ===
-package com.logistics.userauth.auth.jwt;
+=== backend/user-auth-service/src/test/java/com/logistics/userauth/auth/jwt/adapter/in/web/AuthControllerIntegrationTest.java ===
+package com.logistics.userauth.auth.jwt.adapter.in.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logistics.userauth.IntegrationTest;
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.RefreshTokenRequest;
+import com.logistics.userauth.user.adapter.in.web.dto.SignInRequest;
+import com.logistics.userauth.user.adapter.in.web.dto.SignUpRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
+import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @IntegrationTest
 @AutoConfigureMockMvc
-@DisplayName("AuthController: интеграционный тест")
-class AuthIntegrationTest {
+@DisplayName("AuthController: интеграционные тесты")
+class AuthControllerIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     @DisplayName("Регистрация и логин должны работать сквозным сценарием")
@@ -3557,8 +4582,147 @@ class AuthIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(signInJson))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists())
+                .andExpect(jsonPath("$.accessToken").exists())
         ;
+    }
+
+    @Test
+    @DisplayName("Должен зарегистрировать пользователя и вернуть токены")
+    void shouldRegisterUserAndReturnTokens() throws Exception {
+        // Given
+        var signUpRequest = new SignUpRequest(
+                "newuser@example.com",
+                "79991234567",
+                "Password123!",
+                "John",
+                "Doe",
+                "Smith"
+        );
+
+        // When & Then
+        mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signUpRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accessToken").value(notNullValue()))
+                .andExpect(jsonPath("$.refreshToken").value(notNullValue()));
+    }
+
+    @Test
+    @DisplayName("Должен авторизовать пользователя и вернуть токены")
+    void shouldAuthenticateUserAndReturnTokens() throws Exception {
+        // Given - сначала регистрируем
+        var signUpRequest = new SignUpRequest(
+                "logintest@example.com",
+                "79997654321",
+                "Password123!",
+                "Jane",
+                "Doe",
+                "Smith"
+        );
+
+        mockMvc.perform(post("/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signUpRequest)));
+
+        // When - логинимся
+        var signInRequest = new SignInRequest(
+                "79997654321",
+                null,
+                "Password123!"
+        );
+
+        // Then
+        mockMvc.perform(post("/auth/sign-in")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signInRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value(notNullValue()))
+                .andExpect(jsonPath("$.refreshToken").value(notNullValue()));
+    }
+
+    @Test
+    @DisplayName("Должен обновить access токен с помощью refresh токена")
+    void shouldRefreshAccessToken() throws Exception {
+        // Given - регистрируем и получаем токены
+        var signUpRequest = new SignUpRequest(
+                "refreshtest@example.com",
+                "79995555555",
+                "Password123!",
+                "Refresh",
+                "Test",
+                "User"
+        );
+
+        MvcResult registerResult = mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signUpRequest)))
+                .andReturn();
+
+        String responseBody = registerResult.getResponse().getContentAsString();
+        var authResponse = objectMapper.readTree(responseBody);
+        String refreshToken = authResponse.get("refreshToken").asText();
+
+        // When - обновляем токен
+        var refreshRequest = new RefreshTokenRequest(refreshToken);
+
+        // Then
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refreshRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").value(notNullValue()))
+                .andExpect(jsonPath("$.refreshToken").value(notNullValue()));
+    }
+
+    @Test
+    @DisplayName("Должен отозвать refresh токен при logout")
+    void shouldRevokeRefreshTokenOnLogout() throws Exception {
+        // Given - регистрируем
+        var signUpRequest = new SignUpRequest(
+                "logouttest@example.com",
+                "79996666666",
+                "Password123!",
+                "Logout",
+                "Test",
+                "User"
+        );
+
+        MvcResult registerResult = mockMvc.perform(post("/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signUpRequest)))
+                .andReturn();
+
+        String responseBody = registerResult.getResponse().getContentAsString();
+        var authResponse = objectMapper.readTree(responseBody);
+        String refreshToken = authResponse.get("refreshToken").asText();
+
+        // When - делаем logout
+        var logoutRequest = new RefreshTokenRequest(refreshToken);
+
+        mockMvc.perform(post("/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                .andExpect(status().isNoContent());
+
+        // Then - пытаемся использовать отозванный токен
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                .andExpect(status().isUnauthorized()); // Должна быть ошибка
+    }
+
+    @Test
+    @DisplayName("Должен вернуть ошибку для невалидного refresh токена")
+    void shouldReturnErrorForInvalidRefreshToken() throws Exception {
+        // Given
+        var refreshRequest = new RefreshTokenRequest("invalid-token-123");
+
+        // Then
+        mockMvc.perform(post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refreshRequest)))
+                .andExpect(status().isUnauthorized());
     }
 }
 
@@ -3585,7 +4749,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
-@DisplayName("Интеграционные тесты для UserSessionJpaRepository")
+@DisplayName("UserSessionJpaRepository: интеграционные тесты")
 class UserSessionJpaRepositoryIntegrationTest {
 
     @Autowired
@@ -3612,13 +4776,6 @@ class UserSessionJpaRepositoryIntegrationTest {
 
     @Test
     @Transactional
-    @DisplayName("Контекст загружается успешно")
-    void contextLoads() {
-        assertThat(repository).isNotNull();
-    }
-
-    @Test
-    @Transactional
     @DisplayName("Должен сохранить и найти сессию по токену")
     void shouldSaveAndFindByRefreshToken() {
 
@@ -3626,7 +4783,7 @@ class UserSessionJpaRepositoryIntegrationTest {
         // Given
         UserSessionEntity session = UserSessionEntity.builder()
                 .user(testUser)
-                .sessionToken("unique-token-12345")
+                .refreshToken("unique-token-12345")
                 .expiresAt(LocalDateTime.now().plusHours(2))
                 .createdAt(LocalDateTime.now())
                 .ipAddress(in)

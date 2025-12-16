@@ -10,9 +10,19 @@ import org.springframework.data.annotation.CreatedDate;
 import java.time.Instant;
 import java.time.LocalDateTime;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
+/**
+ * JPA сущность для хранения пользователей в БД.
+ *
+ * <h2>Таблица в БД</h2>
+ * Schema: user_management
+ * Table: users
+ *
+ * Уникальность: phone UNIQUE
+ * Индексы: email, phone, role_name, last_accessed_at, facility_id
+ *
+ * @see UserJpaRepository для работы с БД
+ * @see UserPersistenceMapper для преобразования Domain ↔ Entity
+ */
 @Entity
 @Table(
         name = "users",
@@ -28,6 +38,10 @@ import java.time.LocalDateTime;
                 @Index(columnList = "facility_id", name = "idx_users_facility_id")
         }
 )
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class UserEntity {
     @Id

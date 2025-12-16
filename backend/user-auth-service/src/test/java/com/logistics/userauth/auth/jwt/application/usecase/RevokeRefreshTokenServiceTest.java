@@ -1,7 +1,7 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.application.port.in.command.RevokeRefreshTokenCommand;
-import com.logistics.userauth.auth.session.application.ports.out.UserSessionRepository;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
 import com.logistics.userauth.auth.session.domain.UserSession;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -1,6 +1,8 @@
 package com.logistics.userauth.auth.jwt.adapter.in.security;
 
+import com.logistics.userauth.auth.jwt.adapter.out.JwtTokenProvider;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.auth.jwt.infrastructure.security.SecurityConfiguration;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,6 +20,28 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Фильтр для аутентификации запросов на основе JWT токенов.
+ *
+ * Применяется ко ВСЕМ запросам кроме /auth/** endpoints.
+ *
+ * Процесс:
+ * 1. Читает header Authorization
+ * 2. Извлекает Bearer токен
+ * 3. Валидирует токен через JwtTokenProvider
+ * 4. Извлекает userId из токена
+ * 5. Загружает пользователя из БД
+ * 6. Создает Authentication объект и устанавливает в SecurityContext
+ * 7. Передает запрос дальше по цепочке
+ *
+ * Если токен невалиден:
+ * - Запрос передается дальше БЕЗ аутентификации
+ * - Spring Security вернет 403 Forbidden для защищенных ресурсов
+ *
+ * Интеграция:
+ * @see SecurityConfiguration где регистрируется этот фильтр
+ * @see JwtTokenProvider для валидации токенов
+ */
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -28,6 +52,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final TokenGeneratorPort tokenGenerator;
     private final UserRepository userRepository;
 
+    /**
+     * Выполняет фильтрацию и аутентификацию.
+     *
+     * @param request HTTP запрос
+     * @param response HTTP ответ
+     * @param filterChain Цепочка фильтров
+     */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -70,6 +101,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * Исключает /auth/** endpoints из обработки этого фильтра.
+     *
+     * @param request HTTP запрос
+     * @return true если запрос НЕ должен быть обработан этим фильтром
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();

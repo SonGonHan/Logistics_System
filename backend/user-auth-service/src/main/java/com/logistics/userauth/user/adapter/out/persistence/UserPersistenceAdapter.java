@@ -8,6 +8,24 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
+/**
+ * Адаптер, реализующий интерфейс UserRepository для JPA.
+ *
+ * <h2>Паттерн</h2>
+ * Это реализация Adapter паттерна:
+ * - Интерфейс UserRepository определяет контракт
+ * - UserPersistenceAdapter реализует этот контракт с помощью JPA
+ * - Бизнес-логика зависит от интерфейса, а не от реализации
+ *
+ * <h2>Преимущества</h2>
+ * - Если позже нужна другая БД (MongoDB, Redis), создаем новый адаптер
+ * - Бизнес-логика не меняется
+ * - Легче тестировать (подменить mock-адаптер)
+ *
+ * @implements UserRepository
+ * @see UserRepository для контракта
+ * @see UserJpaRepository для JPA работы
+ */
 @RequiredArgsConstructor
 @Component
 public class UserPersistenceAdapter implements UserRepository {

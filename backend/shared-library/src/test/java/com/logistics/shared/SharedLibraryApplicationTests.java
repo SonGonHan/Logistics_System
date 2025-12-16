@@ -7,7 +7,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@DisplayName("Тесты загрузки контекста для Shared Library")
+@DisplayName("Shared Library: загрузка контекста")
 class SharedLibraryApplicationTests {
 
     @Test

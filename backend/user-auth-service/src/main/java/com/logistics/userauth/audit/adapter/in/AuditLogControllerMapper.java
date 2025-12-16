@@ -5,6 +5,16 @@ import com.logistics.userauth.audit.domain.AuditLog;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * Маппер для преобразования между Domain AuditLog и DTO.
+ *
+ * <h2>Назначение</h2>
+ * Конвертирует AuditLog → AuditLogDTO и обратно.
+ * НЕ передает пароль в DTO (по соображениям безопасности).
+ *
+ * @see AuditLogDTO для DTO
+ * @see AuditLog для доменной сущности
+ */
 @Component
 @RequiredArgsConstructor
 public class AuditLogControllerMapper {

@@ -19,7 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("Тесты для AuditActionTypeService")
+@DisplayName("AuditActionTypeService: юнит-тесты")
 class AuditActionTypeServiceTest {
 
     @Mock

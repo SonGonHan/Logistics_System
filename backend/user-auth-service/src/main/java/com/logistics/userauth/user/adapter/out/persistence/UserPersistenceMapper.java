@@ -6,6 +6,16 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.time.LocalDateTime;
 
+/**
+ * Маппер для преобразования между Domain и JPA Entity.
+ *
+ * <h2>Назначение</h2>
+ * Конвертирует User (доменная модель) ↔ UserEntity (JPA entity).
+ * Позволяет скрыть детали БД от бизнес-слоя.
+ *
+ * @see User для доменной модели
+ * @see UserEntity для JPA entity
+ */
 @Component
 public class UserPersistenceMapper {
 

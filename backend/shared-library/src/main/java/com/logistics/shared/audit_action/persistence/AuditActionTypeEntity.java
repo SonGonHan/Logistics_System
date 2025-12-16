@@ -1,15 +1,18 @@
 package com.logistics.shared.audit_action.persistence;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-@Data
-@AllArgsConstructor
-@NoArgsConstructor
-@Builder
+/**
+ * JPA сущность для хранения типов аудит-действий в БД.
+ *
+ * <h2>Таблица в БД</h2>
+ * Schema: shared_data
+ * Table: audit_action_types
+ *
+ * @see AuditActionJpaRepository для работы с БД
+ * @see AuditActionTypeMapper для преобразования Domain ↔ Entity
+ */
 @Entity
 @Table(
         name = "audit_action_types",
@@ -21,6 +24,11 @@ import lombok.NoArgsConstructor;
 //                @Index(columnList = "action_name", name = "audit_action_types_action_name_key")
         }
 )
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class AuditActionTypeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "audit_action_type_seq")

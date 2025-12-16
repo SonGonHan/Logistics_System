@@ -2,8 +2,10 @@ package com.logistics.userauth.audit.adapter.out.persistence;
 
 import com.logistics.shared.audit_action.domain.AuditActionType;
 import com.logistics.shared.audit_action.persistence.AuditActionTypeMapper;
-import com.logistics.userauth.audit.app.out.AuditLogRepository;
+import com.logistics.userauth.audit.application.port.out.AuditLogRepository;
 import com.logistics.userauth.audit.domain.AuditLog;
+import com.logistics.userauth.auth.session.adapter.out.persistence.UserSessionJpaRepository;
+import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
 import com.logistics.userauth.user.adapter.out.persistence.UserPersistenceMapper;
 import com.logistics.userauth.user.domain.User;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +14,24 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Адаптер, реализующий интерфейс AuditLogRepository для JPA.
+ *
+ * <h2>Паттерн</h2>
+ * Это реализация Adapter паттерна:
+ * - Интерфейс AuditLogRepository определяет контракт
+ * - AuditLogPersistenceAdapter реализует этот контракт с помощью JPA
+ * - Бизнес-логика зависит от интерфейса, а не от реализации
+ *
+ * <h2>Преимущества</h2>
+ * - Если позже нужна другая БД (MongoDB, Redis), создаем новый адаптер
+ * - Бизнес-логика не меняется
+ * - Легче тестировать (подменить mock-адаптер)
+ *
+ * @implements AuditLogRepository
+ * @see AuditLogRepository для контракта
+ * @see AuditLogJpaRepository для JPA работы
+ */
 @Component
 @RequiredArgsConstructor
 public class AuditLogPersistenceAdapter implements AuditLogRepository {

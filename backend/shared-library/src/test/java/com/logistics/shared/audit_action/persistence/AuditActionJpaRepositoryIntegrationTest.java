@@ -15,8 +15,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @IntegrationTest
-@DisplayName("Интеграционные тесты для AuditActionJpaRepository")
-//@Disabled("Mockito не поддерживает Java 25 полностью. Нужно обновить версию Mockito.")
+@DisplayName("AuditActionJpaRepository: интеграционные тесты")
 class AuditActionJpaRepositoryIntegrationTest {
 
     @Autowired
@@ -41,8 +40,8 @@ class AuditActionJpaRepositoryIntegrationTest {
         Optional<AuditActionTypeEntity> found = repository.findById(Integer.valueOf(savedEntity.getId()));
 
         // Then
-        assertThat(found).isPresent(); // Проверяем, что сущность нашлась
-        assertThat(found.get().getActionName()).isEqualTo("ORDER_CREATED"); // Проверяем ее содержимое
+        assertThat(found).isPresent();
+        assertThat(found.get().getActionName()).isEqualTo("ORDER_CREATED");
         assertThat(found.get().getId()).isEqualTo(savedEntity.getId());
     }
 

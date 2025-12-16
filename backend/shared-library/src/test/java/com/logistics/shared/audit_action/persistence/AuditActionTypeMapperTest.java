@@ -4,10 +4,11 @@ import com.logistics.shared.audit_action.domain.AuditActionType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("Тесты для AuditActionTypeMapper")
+@DisplayName("AuditActionTypeMapper: юнит-тесты")
 class AuditActionTypeMapperTest {
 
     private AuditActionTypeMapper mapper;

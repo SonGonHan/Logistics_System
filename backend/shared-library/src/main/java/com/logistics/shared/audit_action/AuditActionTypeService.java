@@ -8,6 +8,18 @@ import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+/**
+ * Бизнес-сервис для работы с типами аудит-действий.
+ *
+ * <h2>Ответственность</h2>
+ * Предоставляет различные способы поиска типов аудит-действий:
+ * - По ID
+ * - По имени действия (actionName)
+ * - По категории
+ *
+ * @see AuditActionJpaRepository для работы с БД
+ * @see AuditActionTypeMapper для преобразования Entity ↔ Domain
+ */
 @Service
 @RequiredArgsConstructor
 public class AuditActionTypeService {
