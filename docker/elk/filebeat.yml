@@ -1,0 +1,39 @@
+filebeat.inputs:
+  - type: container
+    paths:
+      - /var/lib/docker/containers/*/*.log
+
+    # 1) распаковать docker-wrapper JSON
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.message_key: log
+
+processors:
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+
+  # 2) распаковать JSON, который пишет Spring Boot (лежит внутри поля log)
+  - decode_json_fields:
+      fields: ["log"]
+      target: ""
+      overwrite_keys: true
+      add_error_key: true
+      max_depth: 2
+
+  # 3) (опционально) привести level к log.level, если в JSON он называется "level"
+  - rename:
+      fields:
+        - from: "level"
+          to: "log.level"
+      ignore_missing: true
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "logistics-logs-%{+yyyy.MM.dd}"
+
+setup.ilm.enabled: false
+setup.template.name: "logistics-logs"
+setup.template.pattern: "logistics-logs-*"
+
+logging.level: info
+logging.to_stderr: true

@@ -1,0 +1,277 @@
+#services:
+#  # ============================================
+#  # PostgreSQL Database
+#  # ============================================
+#  postgres:
+#    image: postgres:16-alpine
+#    container_name: logistics_postgres
+#    environment:
+#      POSTGRES_USER: admin
+#      POSTGRES_PASSWORD: password
+#      POSTGRES_DB: logistics_system
+#      POSTGRES_INITDB_ARGS: "-U admin"
+#    ports:
+#      - "5432:5432"
+#    volumes:
+#      - postgres_data:/var/lib/postgresql/data
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U postgres"]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 5
+#    networks:
+#      - logistics-network
+#
+#  db-migration:
+#    build:
+#      context: ..
+#      dockerfile: ../backend/db-migration/Dockerfile
+#    container_name: db-migration
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics_system
+#      SPRING_DATASOURCE_USERNAME: admin
+#      SPRING_DATASOURCE_PASSWORD: password
+#      APP_DB_MIGRATION_ENABLED: "true"
+#    networks:
+#      - logistics-network
+#    restart: no
+#    profiles:
+#      - ""
+#  # ============================================
+#  # User Auth Service
+#  # ============================================
+#  user-auth-service:
+#    build:
+#      context: ..                                # Контекст = корневая папка!
+#      dockerfile: ../backend/user-auth-service/Dockerfile # Dockerfile внутри папки
+#    container_name: user-auth-service
+#    ports:
+#      - "8080:8080"
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics_system
+#      SPRING_DATASOURCE_USERNAME: admin
+#      SPRING_DATASOURCE_PASSWORD: password
+#      SPRING_PROFILES_ACTIVE: dev
+#    depends_on:
+#      - db-migration
+#    networks:
+#      - logistics-network
+#    restart: unless-stopped
+#
+#  # ============================================
+#  # Waybill Service (будущее)
+#  # ============================================
+#  # waybill-service:
+#  #   build:
+#  #     context: .
+#  #     dockerfile: waybill-service/Dockerfile
+#  #   container_name: waybill-service
+#  #   ports:
+#  #     - "8081:8080"
+#  #   environment:
+#  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/logistics_dev
+#  #     SPRING_DATASOURCE_USERNAME: postgres
+#  #     SPRING_DATASOURCE_PASSWORD: postgres
+#  #     SPRING_PROFILES_ACTIVE: dev
+#  #   depends_on:
+#  #     postgres:
+#  #       condition: service_healthy
+#  #   networks:
+#  #     - logistics-network
+#
+#volumes:
+#  postgres_data:
+#
+#networks:
+#  logistics-network:
+#    driver: bridge
+
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  logistics-network:
+    driver: bridge
+    name: logistics-network
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  postgres-data:
+    driver: local
+  logs:
+    driver: local
+
+# ============================================
+# SERVICES
+# ============================================
+services:
+
+  # ==========================================
+  # PostgreSQL Database
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: logistics-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ${POSTGRES_DB:-logistics_system}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      TZ: Europe/Moscow
+
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+    networks:
+      - logistics-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-logistics_system}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # Database Migration
+  # ==========================================
+  db-migration:
+    build:
+      context: ..
+      dockerfile: backend/db-migration/Dockerfile
+
+    container_name: logistics-db-migration
+    restart: "no"
+
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-logistics_system}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      APP_DB_MIGRATION_ENABLED: "true"
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      TZ: Europe/Moscow
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - logistics-network
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # User Auth Service
+  # ==========================================
+  user-auth-service:
+    build:
+      context: ..
+      dockerfile: backend/user-auth-service/Dockerfile
+
+    container_name: logistics-user-auth-service
+    restart: unless-stopped
+
+    # ← Labels на уровне сервиса (работают переменные)
+    labels:
+      com.logistics.service: "user-auth-service"
+      com.logistics.environment: "${SPRING_PROFILES_ACTIVE:-dev}"
+      service: "user-auth-service"
+
+    environment:
+      # Database
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-logistics_system}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-password}
+
+      # Spring
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SERVER_PORT: 8080
+
+      # JWT
+      APP_JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
+      APP_JWT_ACCESS_EXPIRATION: ${JWT_ACCESS_EXPIRATION:-900}
+      APP_JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800}
+
+      # Logging
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_COM_LOGISTICS: ${LOG_LEVEL:-DEBUG}
+
+      # Timezone
+      TZ: Europe/Moscow
+
+    ports:
+      - "${USER_AUTH_SERVICE_PORT:-8080}:8080"
+
+    volumes:
+      - logs:/logs
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      db-migration:
+        condition: service_completed_successfully
+
+    networks:
+      - logistics-network
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # ← Logging БЕЗ labels (или только статические)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+
+  # ==========================================
+  # FUTURE SERVICES (закомментированы)
+  # ==========================================
+
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: logistics-redis
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - logistics-network
+
+  # rabbitmq:
+  #   image: rabbitmq:3-management-alpine
+  #   container_name: logistics-rabbitmq
+  #   restart: unless-stopped
+  #   environment:
+  #     RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
+  #     RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-password}
+  #   ports:
+  #     - "5672:5672"
+  #     - "15672:15672"
+  #   networks:
+  #     - logistics-network

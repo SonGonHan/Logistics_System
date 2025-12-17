@@ -1,0 +1,10 @@
+# Elasticsearch Configuration
+cluster.name: "logistics-cluster"
+network.host: 0.0.0.0
+
+# Security
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+
+# Performance
+bootstrap.memory_lock: false
