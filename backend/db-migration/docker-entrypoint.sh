@@ -1,18 +1,29 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
-echo "========== Запуск инициализации БД =========="
+echo "=========================================="
+echo "Starting Database Migration"
+echo "=========================================="
 
-# Запустить приложение
+# Ждем PostgreSQL
+echo "Waiting for PostgreSQL..."
+until nc -z postgres 5432 2>/dev/null; do
+  echo "PostgreSQL unavailable - sleeping"
+  sleep 2
+done
+
+echo "PostgreSQL is ready!"
+
+# Запускаем миграцию
+echo "Running migrations..."
 java -jar app.jar
 
-# Проверить статус
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -eq 0 ]; then
-    echo "========== ✓ Миграции успешно завершены =========="
-    exit 0
+  echo "Migration completed successfully!"
+  exit 0
 else
-    echo "========== ✗ Миграции завершились с ошибкой (код $EXIT_CODE) =========="
-    exit $EXIT_CODE
+  echo "Migration FAILED with exit code: $EXIT_CODE"
+  exit $EXIT_CODE
 fi
