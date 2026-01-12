@@ -443,7 +443,8 @@ public class RateLimiterService {
 
 === backend/shared-library/src/main/java/com/logistics/shared/redis/service/package-info.java ===
 /**
- * Утилиты для работы с Redis
+ * Утилиты для работы с Redis.
+ *
  * Содержит:
  * <ul>
  *   <li><b>RedisService</b> - Утилита для взаимодействия с Redis</li>
@@ -676,7 +677,8 @@ public class RedisConfig {
 
 === backend/shared-library/src/main/java/com/logistics/shared/redis/config/package-info.java ===
 /**
- * Настройки Redis
+ * Настройки Redis.
+ *
  * Содержит:
  * <ul>
  *   <li><b>RedisConfig</b> - Общая конфигурация Redis</li>
@@ -2221,9 +2223,31 @@ package com.logistics.userauth.sms.application.port.in;
 import com.logistics.userauth.sms.application.port.in.command.VerifyPhoneCommand;
 
 /**
- * Use Case для верификации телефона через SMS код.
+ * Входной порт (Inbound Port) use case-а подтверждения телефона через SMS код.
+ *
+ * <h2>Назначение</h2>
+ * Определяет контракт бизнес-сценария: проверить введенный пользователем код,
+ * учесть количество попыток и (при успехе) установить статус “phone verified”.
+ *
+ * <h2>Входные данные</h2>
+ * <ul>
+ *   <li>{@link VerifyPhoneCommand} — телефон и код, введенный пользователем.</li>
+ * </ul>
+ *
+ * <h2>Ошибки</h2>
+ * <ul>
+ *   <li>{@link com.logistics.userauth.sms.application.exception.InvalidVerificationCodeException} — код неверный/истёк/превышены попытки.</li>
+ * </ul>
+ *
+ * <h2>Реализация</h2>
+ * Реализуется в application/usecase слое (например, сервисом сценария верификации телефона).
+ *
+ * @see com.logistics.userauth.sms.application.usecase.VerifyPhoneService
+ * @see com.logistics.userauth.sms.application.port.out.SmsRepository
+ * @see com.logistics.userauth.common.web.GlobalExceptionHandler
  */
 public interface VerifyPhoneUseCase {
+
     void verify(VerifyPhoneCommand command);
 }
 
@@ -2234,7 +2258,38 @@ package com.logistics.userauth.sms.application.port.in;
 
 import com.logistics.userauth.sms.application.port.in.command.SendVerificationCodeCommand;
 
+/**
+ * Входной порт (Inbound Port) use case-а отправки SMS кода верификации.
+ *
+ * <h2>Назначение</h2>
+ * Определяет контракт бизнес-сценария: сгенерировать одноразовый код, сохранить его с TTL
+ * и отправить пользователю через SMS провайдера.
+ *
+ * <h2>Кто вызывает</h2>
+ * Обычно вызывается из web-адаптера (REST контроллера), который принимает номер телефона
+ * и формирует {@link SendVerificationCodeCommand}.
+ *
+ * <h2>Входные данные</h2>
+ * <ul>
+ *   <li>{@link SendVerificationCodeCommand} — содержит телефон, на который нужно отправить код.</li>
+ * </ul>
+ *
+ * <h2>Ошибки</h2>
+ * <ul>
+ *   <li>{@link com.logistics.userauth.sms.application.exception.RateLimitExceededException} — превышен лимит отправки.</li>
+ *   <li>{@link com.logistics.userauth.sms.application.exception.SmsDeliveryException} — ошибка отправки SMS провайдером.</li>
+ * </ul>
+ *
+ * <h2>Реализация</h2>
+ * Реализуется в application/usecase слое (например, сервисом сценария отправки кода).
+ *
+ * @see com.logistics.userauth.sms.application.usecase.SendVerificationCodeService
+ * @see com.logistics.userauth.sms.application.port.out.SendSmsPort
+ * @see com.logistics.userauth.sms.application.port.out.SmsRepository
+ * @see com.logistics.userauth.common.web.GlobalExceptionHandler
+ */
 public interface SendVerificationCodeUseCase {
+    
     void sendCode(SendVerificationCodeCommand command);
 }
 
@@ -2274,7 +2329,32 @@ package com.logistics.userauth.sms.application.port.in;
 
 import com.logistics.userauth.sms.application.port.in.command.InternalSmsRateLimiterCommand;
 
+/**
+ * Входной порт (Inbound Port) проверки внутренних ограничений на отправку SMS.
+ *
+ * <h2>Назначение</h2>
+ * Выделяет отдельный use case для контроля частоты отправки кодов верификации
+ * (например, “не чаще 1 раза в N секунд” и/или лимиты по телефону/идентификатору).
+ *
+ * <h2>Когда используется</h2>
+ * Обычно вызывается внутри сценария отправки кода перед генерацией/сохранением кода и отправкой SMS,
+ * чтобы защититься от брутфорса и злоупотреблений.
+ *
+ * <h2>Входные данные</h2>
+ * <ul>
+ *   <li>{@link InternalSmsRateLimiterCommand} — данные, по которым проверяются лимиты (например, телефон).</li>
+ * </ul>
+ *
+ * <h2>Ошибки</h2>
+ * <ul>
+ *   <li>{@link com.logistics.userauth.sms.application.exception.RateLimitExceededException} — лимит превышен.</li>
+ * </ul>
+ *
+ * @see com.logistics.userauth.sms.application.usecase.InternalSmsRateLimiterService
+ * @see com.logistics.userauth.common.web.GlobalExceptionHandler
+ */
 public interface InternalSmsRateLimiterUseCase {
+
     void checkRateLimiter(InternalSmsRateLimiterCommand command);
 }
 
@@ -2283,6 +2363,26 @@ public interface InternalSmsRateLimiterUseCase {
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/application/port/in/command/SendVerificationCodeCommand.java ===
 package com.logistics.userauth.sms.application.port.in.command;
 
+/**
+ * Команда для use case-а отправки SMS кода верификации.
+ *
+ * <h2>Назначение</h2>
+ * Содержит входные параметры, необходимые для запуска сценария генерации и отправки кода на телефон.
+ *
+ * <h2>Поля</h2>
+ * <ul>
+ *   <li><b>phone</b> — номер телефона получателя в формате, поддерживаемом валидацией на web-слое.</li>
+ * </ul>
+ *
+ * <h2>Пример</h2>
+ * <pre>{@code
+ * var command = new SendVerificationCodeCommand("79991234567");
+ * sendVerificationCodeUseCase.sendCode(command);
+ * }</pre>
+ *
+ * @see com.logistics.userauth.sms.application.port.in.SendVerificationCodeUseCase
+ * @see com.logistics.userauth.sms.adapter.in.web.dto.SendVerificationCodeRequest
+ */
 public record SendVerificationCodeCommand(String phone) {
 }
 
@@ -2291,13 +2391,54 @@ public record SendVerificationCodeCommand(String phone) {
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/application/port/in/command/InternalSmsRateLimiterCommand.java ===
 package com.logistics.userauth.sms.application.port.in.command;
 
-public record InternalSmsRateLimiterCommand (String phone) {
+/**
+ * Команда для внутренней проверки rate limit на отправку SMS кода.
+ *
+ * <h2>Назначение</h2>
+ * Содержит данные, по которым применяется ограничение частоты отправки кода,
+ * чтобы защититься от спама и злоупотреблений (например, ограничение по телефону).
+ *
+ * <h2>Поля</h2>
+ * <ul>
+ *   <li><b>phone</b> — номер телефона, для которого проверяется лимит отправки.</li>
+ * </ul>
+ *
+ * <h2>Пример</h2>
+ * <pre>{@code
+ * var command = new InternalSmsRateLimiterCommand("79991234567");
+ * internalSmsRateLimiterUseCase.checkRateLimiter(command);
+ * }</pre>
+ *
+ * @see com.logistics.userauth.sms.application.port.in.InternalSmsRateLimiterUseCase
+ */
+public record InternalSmsRateLimiterCommand(String phone) {
 }
 
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/application/port/in/command/package-info.java ===
+/**
+ * Команды (Command objects) для входных use case-ов модуля SMS верификации.
+ *
+ * <h2>Назначение</h2>
+ * Пакет содержит неизменяемые объекты с входными параметрами бизнес-сценариев
+ * (отправка кода, проверка кода, проверка rate limit).
+ *
+ * <h2>Команды</h2>
+ * <ul>
+ *   <li><b>SendVerificationCodeCommand</b> — входные данные для отправки кода на телефон.</li>
+ *   <li><b>VerifyPhoneCommand</b> — телефон и код, введенный пользователем.</li>
+ *   <li><b>InternalSmsRateLimiterCommand</b> — телефон/идентификатор для проверки лимитов отправки.</li>
+ * </ul>
+ *
+ * Команды формируются в adapter.in (например, REST-контроллером) и передаются в inbound ports.
+ *
+ * @see com.logistics.userauth.sms.application.port.in.SendVerificationCodeUseCase
+ * @see com.logistics.userauth.sms.application.port.in.VerifyPhoneUseCase
+ * @see com.logistics.userauth.sms.application.port.in.InternalSmsRateLimiterUseCase
+ */
 package com.logistics.userauth.sms.application.port.in.command;
+
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/application/port/in/command/VerifyPhoneCommand.java ===
@@ -2305,6 +2446,32 @@ package com.logistics.userauth.sms.application.port.in.command;
 
 import lombok.Builder;
 
+/**
+ * Команда для use case-а подтверждения телефона по SMS коду.
+ *
+ * <h2>Назначение</h2>
+ * Передаёт в application-слой пару (телефон + код), введенную пользователем, для проверки,
+ * учета попыток и установки статуса “verified” при успешной верификации.
+ *
+ * <h2>Поля</h2>
+ * <ul>
+ *   <li><b>phone</b> — номер телефона, для которого выполняется подтверждение.</li>
+ *   <li><b>code</b> — одноразовый код верификации (обычно 6 цифр).</li>
+ * </ul>
+ *
+ * <h2>Пример</h2>
+ * <pre>{@code
+ * var command = VerifyPhoneCommand.builder()
+ *     .phone("79991234567")
+ *     .code("123456")
+ *     .build();
+ *
+ * verifyPhoneUseCase.verify(command);
+ * }</pre>
+ *
+ * @see com.logistics.userauth.sms.application.port.in.VerifyPhoneUseCase
+ * @see com.logistics.userauth.sms.adapter.in.web.dto.VerifyPhoneRequest
+ */
 @Builder
 public record VerifyPhoneCommand(
         String phone,
@@ -2312,8 +2479,26 @@ public record VerifyPhoneCommand(
 ) {}
 
 
+
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/application/port/package-info.java ===
+/**
+ * Порты (Ports) модуля SMS верификации — контракты взаимодействия application-слоя с адаптерами.
+ *
+ * <h2>Назначение</h2>
+ * Пакет группирует интерфейсы, которые описывают границы приложения:
+ * что модуль предоставляет внешнему миру (inbound ports) и что требует от инфраструктуры (outbound ports).
+ *
+ * <h2>Структура</h2>
+ * <ul>
+ *   <li><b>port.in</b> — входные порты (use case интерфейсы), вызываемые из adapter.in</li>
+ *   <li><b>port.out</b> — выходные порты (контракты инфраструктуры), реализуемые adapter.out</li>
+ * </ul>
+ *
+ * @see com.logistics.userauth.sms.application.port.in
+ * @see com.logistics.userauth.sms.application.port.out
+ */
 package com.logistics.userauth.sms.application.port;
+
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/application/port/out/SendSmsPort.java ===
@@ -2423,8 +2608,25 @@ public class RateLimitExceededException extends RuntimeException {
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/application/exception/InvalidVerificationCodeException.java ===
 package com.logistics.userauth.sms.application.exception;
 
-
+/**
+ * Исключение при неверном или недействительном коде SMS верификации.
+ *
+ * <h2>Когда выбрасывается</h2>
+ * <ul>
+ *   <li>Код для указанного телефона не найден (например, не запрашивали или уже удалён)</li>
+ *   <li>Срок действия кода истёк (TTL закончился)</li>
+ *   <li>Введённый код не совпадает с сохранённым</li>
+ *   <li>Превышено максимальное число попыток ввода кода (код инвалидируется/удаляется)</li>
+ * </ul>
+ *
+ * <h2>HTTP статус</h2>
+ * 400 Bad Request
+ *
+ * @see com.logistics.userauth.common.web.GlobalExceptionHandler
+ * @see com.logistics.userauth.sms.application.usecase.VerifyPhoneService
+ */
 public class InvalidVerificationCodeException extends RuntimeException {
+
     public InvalidVerificationCodeException(String message) {
         super(message);
     }
@@ -2486,18 +2688,73 @@ public class SmsDeliveryException extends RuntimeException {
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/application/package-info.java ===
+/**
+ * Application-слой (Use Cases) модуля SMS верификации телефона.
+ *
+ * <h2>Назначение</h2>
+ * Содержит бизнес-логику сценариев отправки и проверки SMS кодов и определяет контракты
+ * взаимодействия с внешней инфраструктурой через порты.
+ *
+ * <h2>Ключевые подпакеты</h2>
+ * <ul>
+ *   <li><b>usecase</b> — реализации use case-ов (сервисы сценариев)</li>
+ *   <li><b>port</b> — inbound/outbound контракты для адаптеров</li>
+ *   <li><b>exception</b> — доменно-ориентированные исключения модуля</li>
+ * </ul>
+ *
+ * Application-слой не должен зависеть от web/DB/Redis деталей; они подключаются через adapter.out.
+ *
+ * @see com.logistics.userauth.sms.application.usecase
+ * @see com.logistics.userauth.sms.application.port
+ * @see com.logistics.userauth.sms.application.exception
+ */
 package com.logistics.userauth.sms.application;
+
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/package-info.java ===
 /**
+ * Модуль SMS верификации телефона микросервиса аутентификации.
  *
+ * <h2>Назначение</h2>
+ * Реализует процесс подтверждения номера телефона через отправку одноразового кода (OTP) по SMS:
+ * генерация кода, хранение с TTL, проверка кода и контроль числа попыток/частоты отправки.
+ *
+ * <h2>Архитектура</h2>
+ * Модуль построен по принципам Clean/Hexagonal Architecture:
+ * <ul>
+ *   <li><b>adapter.in</b> — REST endpoints и DTO</li>
+ *   <li><b>application</b> — use case-логика и порты</li>
+ *   <li><b>domain</b> — доменные модели (например, SmsVerificationCode)</li>
+ *   <li><b>adapter.out</b> — интеграции (Redis/persistence, SMS провайдеры)</li>
+ * </ul>
+ *
+ * @see com.logistics.userauth.sms.adapter.in
+ * @see com.logistics.userauth.sms.application
+ * @see com.logistics.userauth.sms.domain
+ * @see com.logistics.userauth.sms.adapter.out
  */
 package com.logistics.userauth.sms;
 
 
+
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/domain/package-info.java ===
+/**
+ * Доменная модель модуля SMS верификации.
+ *
+ * <h2>Назначение</h2>
+ * Описывает ключевые бизнес-объекты, используемые в сценариях подтверждения телефона,
+ * без привязки к web/redis/базе данных.
+ *
+ * <h2>Классы</h2>
+ * <ul>
+ *   <li><b>SmsVerificationCode</b> — код верификации с метаданными (phone, code, expiresAt, attempts).</li>
+ * </ul>
+ *
+ * @see com.logistics.userauth.sms.domain.SmsVerificationCode
+ */
 package com.logistics.userauth.sms.domain;
+
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/domain/SmsVerificationCode.java ===
@@ -2641,7 +2898,25 @@ public class SmsController {
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/adapter/in/web/package-info.java ===
+/**
+ * Web-адаптер (adapter.in) для модуля SMS верификации.
+ *
+ * <h2>Назначение</h2>
+ * Содержит REST контроллеры и DTO, которые принимают HTTP запросы и делегируют бизнес-логику
+ * в application-слой через inbound ports.
+ *
+ * <h2>Состав</h2>
+ * <ul>
+ *   <li><b>SmsController</b> — endpoints отправки кода и проверки кода.</li>
+ *   <li><b>DTO</b> — request/response модели для API.</li>
+ * </ul>
+ *
+ * @see com.logistics.userauth.sms.adapter.in.web.SmsController
+ * @see com.logistics.userauth.sms.application.port.in.SendVerificationCodeUseCase
+ * @see com.logistics.userauth.sms.application.port.in.VerifyPhoneUseCase
+ */
 package com.logistics.userauth.sms.adapter.in.web;
+
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/adapter/in/web/dto/VerifyPhoneResponse.java ===
@@ -2762,6 +3037,38 @@ public record SendVerificationCodeRequest(
  */
 package com.logistics.userauth.sms.adapter.in.web.dto;
 
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/sms/adapter/in/validation/package-info.java ===
+/**
+ * Валидация входных данных SMS модуля (adapter.in).
+ *
+ * <h2>Назначение</h2>
+ * Пакет содержит кастомные Jakarta Bean Validation-аннотации и валидаторы,
+ * используемые на web/API слое для проверки корректности данных до вызова use case-ов.
+ *
+ * <h2>Состав</h2>
+ * <ul>
+ *   <li><b>{@link com.logistics.userauth.sms.adapter.in.validation.SmsCode}</b> — аннотация для проверки формата SMS-кода.</li>
+ *   <li><b>{@link com.logistics.userauth.sms.adapter.in.validation.SmsCodeValidator}</b> — реализация проверки (цифры и длина из конфигурации).</li>
+ * </ul>
+ *
+ * <h2>Конфигурация</h2>
+ * Длина кода берётся из свойства {@code app.sms.verification.code-length}.
+ *
+ * <h2>Пример использования</h2>
+ * <pre>{@code
+ * public record VerifyPhoneRequest(
+ *     @Phone String phone,
+ *     @SmsCode String code
+ * ) {}
+ * }</pre>
+ *
+ * @see com.logistics.userauth.sms.adapter.in.web.dto.VerifyPhoneRequest
+ * @see jakarta.validation.Constraint
+ * @see jakarta.validation.ConstraintValidator
+ */
+package com.logistics.userauth.sms.adapter.in.validation;
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/adapter/in/validation/SmsCode.java ===
@@ -3171,7 +3478,25 @@ class RedisSmsRepository {
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/adapter/out/persistence/package-info.java ===
+/**
+ * Persistence-адаптер (adapter.out) модуля SMS верификации.
+ *
+ * <h2>Назначение</h2>
+ * Реализует хранение/получение SMS кодов и статуса верификации телефона во внешнем хранилище
+ * (например, Redis) и предоставляет реализацию выходного порта {@link com.logistics.userauth.sms.application.port.out.SmsRepository}.
+ *
+ * <h2>Состав</h2>
+ * <ul>
+ *   <li><b>SmsRepositoryPersistenceAdapter</b> — реализация порта SmsRepository.</li>
+ *   <li><b>RedisSmsRepository</b> — низкоуровневые операции с Redis (ключи, TTL, счетчики попыток).</li>
+ * </ul>
+ *
+ * @see com.logistics.userauth.sms.application.port.out.SmsRepository
+ * @see com.logistics.userauth.sms.adapter.out.persistence.SmsRepositoryPersistenceAdapter
+ * @see com.logistics.userauth.sms.adapter.out.persistence.RedisSmsRepository
+ */
 package com.logistics.userauth.sms.adapter.out.persistence;
+
 
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/sms/adapter/out/persistence/SmsRepositoryPersistenceAdapter.java ===
@@ -3916,6 +4241,173 @@ package com.logistics.userauth;
 
 
 
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/usecase/GetUserInfoService.java ===
+package com.logistics.userauth.user.application.usecase;
+
+import com.logistics.userauth.user.adapter.in.UserControllerMapper;
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
+import com.logistics.userauth.user.application.port.in.GetUserInfoUseCase;
+import com.logistics.userauth.user.application.port.in.command.GetUserInfoCommand;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import com.logistics.userauth.user.domain.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@RequiredArgsConstructor
+public class GetUserInfoService implements GetUserInfoUseCase {
+
+    private final UserRepository repository;
+
+    @Override
+    public UserResponse getUserInfo(GetUserInfoCommand command) {
+        Long userId = command.userId();
+
+        var actualUser = repository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        return UserControllerMapper.toResponse(actualUser);    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/usecase/UpdateUserInfoService.java ===
+package com.logistics.userauth.user.application.usecase;
+
+import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
+import com.logistics.userauth.sms.application.port.out.SmsRepository;
+import com.logistics.userauth.user.adapter.in.UserControllerMapper;
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
+import com.logistics.userauth.user.application.port.in.UpdateUserInfoUseCase;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserInfoCommand;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@RequiredArgsConstructor
+public class UpdateUserInfoService implements UpdateUserInfoUseCase {
+
+    private final UserRepository userRepository;
+    private final SmsRepository smsRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    public UserResponse update(UpdateUserInfoCommand command) {
+
+        var user = userRepository.findById(command.userId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        user.setEmail(command.email());
+        user.setFirstName(command.firstName());
+        user.setLastName(command.lastName());
+        user.setMiddleName(command.middleName());
+
+        if (command.newPassword() != null && !command.newPassword().isBlank()) {
+
+            if (command.oldPassword() == null || command.oldPassword().isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oldPassword is required");
+            }
+
+            if (!passwordEncoder.matches(command.oldPassword(), user.getPasswordHash())) {
+                throw new BadCredentialsException("Invalid credentials");
+            }
+
+            user.setPasswordHash(passwordEncoder.encode(command.newPassword()));
+        }
+
+        if (command.phone() != null && !command.phone().isBlank()
+                && !command.phone().equals(user.getPhone())) {
+
+            if (!smsRepository.isPhoneVerified(command.phone())) {
+                throw new PhoneNotVerifiedException("Phone is not verified");
+            }
+
+            user.setPhone(command.phone());
+
+            smsRepository.deleteVerificationStatus(command.phone());
+        }
+
+        var saved = userRepository.save(user);
+
+        return UserControllerMapper.toResponse(saved);
+    }
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/usecase/package-info.java ===
+package com.logistics.userauth.user.application.usecase;
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/GetUserInfoUseCase.java ===
+package com.logistics.userauth.user.application.port.in;
+
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
+import com.logistics.userauth.user.application.port.in.command.GetUserInfoCommand;
+
+public interface GetUserInfoUseCase {
+    UserResponse getUserInfo(GetUserInfoCommand command);
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/package-info.java ===
+package com.logistics.userauth.user.application.port.in;
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/UpdateUserInfoUseCase.java ===
+package com.logistics.userauth.user.application.port.in;
+
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserInfoCommand;
+
+public interface UpdateUserInfoUseCase {
+    UserResponse update(UpdateUserInfoCommand command);
+}
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/command/package-info.java ===
+package com.logistics.userauth.user.application.port.in.command;
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/command/UpdateUserInfoCommand.java ===
+package com.logistics.userauth.user.application.port.in.command;
+
+import lombok.Builder;
+
+@Builder
+public record UpdateUserInfoCommand (
+        Long userId,
+        String email,
+        String phone,
+        String firstName,
+        String lastName,
+        String middleName,
+        String oldPassword,
+        String newPassword
+) {
+}
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/command/GetUserInfoCommand.java ===
+package com.logistics.userauth.user.application.port.in.command;
+
+public record GetUserInfoCommand(
+        Long userId
+) {
+}
+
+
+
 === backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/package-info.java ===
 /**
  * Порты (интерфейсы) подсистемы управления пользователями.
@@ -4182,6 +4674,67 @@ public enum UserStatus {
 package com.logistics.userauth.user.domain;
 
 
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/UserController.java ===
+package com.logistics.userauth.user.adapter.in.web;
+
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
+import com.logistics.userauth.user.adapter.in.web.dto.UserUpdateRequest;
+import com.logistics.userauth.user.application.port.in.GetUserInfoUseCase;
+import com.logistics.userauth.user.application.port.in.UpdateUserInfoUseCase;
+import com.logistics.userauth.user.application.port.in.command.GetUserInfoCommand;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserInfoCommand;
+import com.logistics.userauth.user.infrastructure.LogisticsUserDetails;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
+@RestController
+@RequestMapping("/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    private final GetUserInfoUseCase getUserInfoUseCase;
+    private final UpdateUserInfoUseCase updateUserInfoUseCase;
+
+    @GetMapping("/me")
+    public ResponseEntity<UserResponse> getInfo(Authentication authentication) {
+        var principal = (LogisticsUserDetails) authentication.getPrincipal();
+        var command = new GetUserInfoCommand(principal.getId());
+        return ResponseEntity.ok(getUserInfoUseCase.getUserInfo(command));
+    }
+
+    @PostMapping("/me")
+    public ResponseEntity<UserResponse> update(
+            Authentication authentication,
+            @Valid @RequestBody UserUpdateRequest request
+    ) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
+        Long userId = ((LogisticsUserDetails) authentication.getPrincipal()).getId();
+
+        var command = UpdateUserInfoCommand.builder()
+                .userId(userId)
+                .email(request.email())
+                .phone(request.phone())
+                .firstName(request.firstName())
+                .lastName(request.lastName())
+                .middleName(request.middleName())
+                .newPassword(request.newPassword())
+                .oldPassword(request.oldPassword())
+                .build();
+        return ResponseEntity.ok(updateUserInfoUseCase.update(command));
+    }
+
+}
+
+
+
 === backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/package-info.java ===
 /**
  * REST контроллеры и их зависимые DTO для операций с пользователями.
@@ -4264,6 +4817,47 @@ public record UserDTO (String phone,
                        String middleName,
                        UserRole role){
 
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/UserUpdateRequest.java ===
+package com.logistics.userauth.user.adapter.in.web.dto;
+
+import com.logistics.shared.validation.Password;
+import com.logistics.shared.validation.Phone;
+import jakarta.validation.constraints.Email;
+
+public record UserUpdateRequest(
+        @Email
+        String email,
+        @Phone
+        String phone,
+        String firstName,
+        String lastName,
+        String middleName,
+        @Password
+        String oldPassword,
+        @Password
+        String newPassword
+) {
+}
+
+
+
+=== backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/UserResponse.java ===
+package com.logistics.userauth.user.adapter.in.web.dto;
+
+import lombok.Builder;
+
+@Builder
+public record UserResponse(
+    String email,
+    String phone,
+    String firstName,
+    String lastName,
+    String middleName
+) {
 }
 
 
@@ -4352,6 +4946,7 @@ public record FacilityDTO (String name, String address) {
 package com.logistics.userauth.user.adapter.in;
 
 import com.logistics.userauth.user.adapter.in.web.dto.UserDTO;
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
 import com.logistics.userauth.user.domain.User;
 import org.springframework.stereotype.Component;
 
@@ -4387,6 +4982,16 @@ public class UserControllerMapper {
                 .middleName(dto.middleName())
                 .role(dto.role())
                 .lastAccessedTime(LocalDateTime.now())
+                .build();
+    }
+
+    public static UserResponse toResponse(User domain) {
+        return UserResponse.builder()
+                .email(domain.getEmail())
+                .phone(domain.getPhone())
+                .firstName(domain.getFirstName())
+                .lastName(domain.getLastName())
+                .middleName(domain.getMiddleName())
                 .build();
     }
 }
@@ -6437,13 +7042,13 @@ import com.logistics.userauth.auth.jwt.adapter.out.JwtTokenProvider;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
 import com.logistics.userauth.auth.jwt.infrastructure.security.SecurityConfiguration;
 import com.logistics.userauth.user.application.port.out.UserRepository;
+import com.logistics.userauth.user.infrastructure.LogisticsUserDetails;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -6451,7 +7056,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Фильтр для аутентификации запросов на основе JWT токенов.
@@ -6518,16 +7122,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             var userOpt = userRepository.findById(userId);
             if (userOpt.isPresent()) {
                 var user = userOpt.get();
-                var authorities = List.of(new SimpleGrantedAuthority(user.getRole().name()));
+
+                var userDetails = new LogisticsUserDetails(user);
+
                 var authToken = new UsernamePasswordAuthenticationToken(
-                                user, null, authorities
+                        userDetails,
+                        null,
+                        userDetails.getAuthorities()
                 );
 
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+
             }
         }
 
@@ -6574,14 +7180,25 @@ package com.logistics.userauth.auth.jwt.adapter.in.security;
 
 === backend/user-auth-service/src/main/java/com/logistics/userauth/auth/jwt/adapter/in/web/package-info.java ===
 /**
- * REST-контроллер и DTO для операций JWT-аутентификации.
+ * Web-адаптер (adapter.in) для JWT аутентификации и управления токенами.
  *
- * Содержит:
+ * <h2>Назначение</h2>
+ * Пакет содержит HTTP/API слой, который принимает запросы, валидирует входные данные
+ * и делегирует выполнение бизнес-сценариев в application-слой через inbound ports.
+ *
+ * <h2>Структура</h2>
  * <ul>
- *   <li><b>AuthController</b> - endpoints для sign-up, sign-in, refresh, logout</li>
- *   <li><b>JwtAuthenticationResponse</b> - ответ с accessToken и refreshToken</li>
- *   <li><b>RefreshTokenRequest</b> - запрос на refresh или logout</li>
+ *   <li><b>web</b> — контроллеры/обработчики HTTP запросов и сборка ответов.</li>
+ *   <li><b>dto</b> — request/response модели, используемые в REST API.</li>
  * </ul>
+ *
+ * <h2>DTO</h2>
+ * <ul>
+ *   <li>{@link com.logistics.userauth.auth.jwt.adapter.in.web.dto.RefreshTokenRequest}</li>
+ *   <li>{@link com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse}</li>
+ * </ul>
+ *
+ * @see com.logistics.userauth.auth.jwt.adapter.in.web.dto
  */
 package com.logistics.userauth.auth.jwt.adapter.in.web;
 

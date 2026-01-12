@@ -3,6 +3,7 @@ package com.logistics.userauth.user.adapter.in.web.dto;
 import com.logistics.shared.validation.Password;
 import com.logistics.shared.validation.Phone;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Builder;
 
@@ -35,5 +36,6 @@ public record SignInRequest (
         String email,
 
         @Password
+        @NotBlank
         String password
 ) { }

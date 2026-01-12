@@ -30,6 +30,7 @@ public record SignUpRequest(
         @Phone
         String phone,
 
+        @NotBlank
         @Password
         String password,
 

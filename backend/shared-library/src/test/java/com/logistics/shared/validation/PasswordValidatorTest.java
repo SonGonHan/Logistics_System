@@ -27,9 +27,4 @@ class PasswordValidatorTest {
         assertThat(validator.isValid("password1!", null)).isFalse();    // без заглавных
     }
 
-    @Test
-    @DisplayName("Должен отклонять null")
-    void shouldRejectNull() {
-        assertThat(validator.isValid(null, null)).isFalse();
-    }
 }

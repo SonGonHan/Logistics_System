@@ -1,6 +1,7 @@
 package com.logistics.userauth.user.adapter.in;
 
 import com.logistics.userauth.user.adapter.in.web.dto.UserDTO;
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
 import com.logistics.userauth.user.domain.User;
 import org.springframework.stereotype.Component;
 
@@ -36,6 +37,16 @@ public class UserControllerMapper {
                 .middleName(dto.middleName())
                 .role(dto.role())
                 .lastAccessedTime(LocalDateTime.now())
+                .build();
+    }
+
+    public static UserInfoResponse toResponse(User domain) {
+        return UserInfoResponse.builder()
+                .email(domain.getEmail())
+                .phone(domain.getPhone())
+                .firstName(domain.getFirstName())
+                .lastName(domain.getLastName())
+                .middleName(domain.getMiddleName())
                 .build();
     }
 }

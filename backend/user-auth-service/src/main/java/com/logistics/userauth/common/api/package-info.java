@@ -12,6 +12,8 @@
  *   <li><b>@LogoutOperation</b> - Аннотирует endpoint выхода</li>
  *   <li><b>@SendVerificationCodeOperation</b> - Аннотирует endpoint отправления кода</li>
  *   <li><b>@LogoutOperation</b> - Аннотирует endpoint подтверждения </li>
+ *   <li><b>@GetInfoOperation</b> - Аннотирует endpoint получения информации о текущем пользователе</li>
+ *   <li><b>@UpdateInfoOperation</b> - Аннотирует endpoint обновления информации о текущем пользователе</li>
  * </ul>
  *
  * Использование:

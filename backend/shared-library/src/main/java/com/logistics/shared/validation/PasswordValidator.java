@@ -8,7 +8,6 @@ import jakarta.validation.ConstraintValidatorContext;
  *
  * <h2>Реализованные проверки</h2>
  * <ol>
- *   <li>Проверка на null</li>
  *   <li>Проверка длины (минимум 8 символов)</li>
  *   <li>Проверка на наличие заглавной буквы (?=.*[A-Z])</li>
  *   <li>Проверка на наличие строчной буквы (?=.*[a-z])</li>
@@ -29,7 +28,6 @@ import jakarta.validation.ConstraintValidatorContext;
  * validator.isValid(\"password123!\", null);  // false (нет заглавной)
  * validator.isValid(\"Password123\", null);   // false (нет спецсимвола)
  * validator.isValid(\"Pass1!\", null);        // false (меньше 8 символов)
- * validator.isValid(null, null);             // false
  * </pre>
  *
  * @implements ConstraintValidator<Password, String>
@@ -42,8 +40,8 @@ public class PasswordValidator implements ConstraintValidator<Password, String> 
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
-        if (value == null) {
-            return false;
+        if (value == null || value.isBlank()) {
+            return true;
         }
         return value.matches(REGEX);
     }
