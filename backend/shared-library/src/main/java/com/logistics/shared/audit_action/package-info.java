@@ -1,4 +1,3 @@
-// backend/com/logistics/shared/audit_action/package-info.java
 /**
  * Пакет управления типами аудиторских действий.
  *

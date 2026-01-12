@@ -4,7 +4,7 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 /**
- * Валидатор для проверки сложности паролей.
+ * Валидатор для аннотации {@link Password}.
  *
  * <h2>Реализованные проверки</h2>
  * <ol>

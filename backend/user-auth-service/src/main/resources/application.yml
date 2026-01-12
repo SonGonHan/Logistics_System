@@ -5,7 +5,10 @@ spring:
 
   data:
     redis:
-      url: redis://localhost:6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
 
   modulith:
     events:
@@ -27,6 +30,16 @@ server:
     enabled: true
     min-response-size: 1024
 
+logistics:
+  redis:
+    enabled: true
+    key-prefix: "logistics:user-auth"
+    default-cache-ttl-minutes: 60
+    sms-code:
+      key-prefix: "sms:verification:"
+      ttl-minutes: 5
+      max-attempts: 3
+
 management:
   endpoints:
     web:
@@ -39,6 +52,23 @@ management:
       enabled: true
 
 app:
+  sms:
+
+    smsc:
+      login: SonGonHan
+      password: Albania2811
+      sender: Logistics
+
+    # Общие настройки
+    provider: mock  # smsc | mock
+    verification:
+      code-length: 6
+      code-ttl-minutes: 5
+      max-attempts: 1 # Максимум попыток ввода кода
+      resend-cooldown-seconds: 30  # Задержка перед повторной отправкой
+      verified-status-ttl-minutes: 5
+
+
   jwt:
     secret: a6211eda82d5e2b402a0f3a4525c0818f2300f717a4da49d4fb5889a646d5eab
     expiration: 86400000

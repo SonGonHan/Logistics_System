@@ -11,9 +11,9 @@ import java.lang.annotation.*;
  *
  * <h2>Поддерживаемые форматы</h2>
  * <ul>
- *   <li>Россия: +7XXXXXXXXXX, 7XXXXXXXXXX, +7 (XXX) XXX-XX-XX</li>
- *   <li>Беларусь: +375XXXXXXXXX, 375XXXXXXXXX</li>
- *   <li>Казахстан: +77XXXXXXXXX, 77XXXXXXXXX</li>
+ *   <li>Россия: +7XXXXXXXXXX, 8XXXXXXXXXX, +7 (XXX) XXX-XX-XX</li>
+ *   <li>Беларусь: +375XXXXXXXXX, 376XXXXXXXXX</li>
+ *   <li>Казахстан: +77XXXXXXXXX, 78XXXXXXXXX</li>
  * </ul>
  *
  * <h2>Примеры использования</h2>

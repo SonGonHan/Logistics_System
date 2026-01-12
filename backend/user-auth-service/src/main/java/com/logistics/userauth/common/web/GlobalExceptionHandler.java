@@ -1,6 +1,10 @@
 package com.logistics.userauth.common.web;
 
 import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
+import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
+import com.logistics.userauth.sms.application.exception.InvalidVerificationCodeException;
+import com.logistics.userauth.sms.application.exception.RateLimitExceededException;
+import com.logistics.userauth.sms.application.exception.SmsDeliveryException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -96,4 +100,70 @@ public class GlobalExceptionHandler {
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
+
+    /**
+     * Обработка превышения rate limit.
+     *
+     * @param ex RateLimitExceededException
+     * @return ResponseEntity с кодом 429
+     */
+    @ExceptionHandler(RateLimitExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleRateLimitExceeded(
+            RateLimitExceededException ex
+    ) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "RATE_LIMIT_EXCEEDED");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(body);
+    }
+
+    /**
+     * Обработка ошибки доставки SMS.
+     *
+     * @param ex SmsDeliveryException
+     * @return ResponseEntity с кодом 503
+     */
+    @ExceptionHandler(SmsDeliveryException.class)
+    public ResponseEntity<Map<String, Object>> handleSmsDeliveryError(
+            SmsDeliveryException ex
+    ) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "SMS_DELIVERY_FAILED");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+    }
+
+    /**
+     * Обработка ошибок невалидного кода верификации.
+     *
+     * @param ex InvalidVerificationCodeException
+     * @return ResponseEntity с кодом 400
+     */
+    @ExceptionHandler(InvalidVerificationCodeException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidVerificationCode(
+            InvalidVerificationCodeException ex
+    ) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "INVALID_VERIFICATION_CODE");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+
+    /**
+     * Обработка ошибки верификации телефона.
+     *
+     * @param ex PhoneNotVerifiedException
+     * @return ResponseEntity с кодом 400
+     */
+    @ExceptionHandler(PhoneNotVerifiedException.class)
+    public ResponseEntity<Map<String, Object>> handlePhoneNotVerified(
+            PhoneNotVerifiedException ex
+    ) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "PHONE_NOT_VERIFIED");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
 }

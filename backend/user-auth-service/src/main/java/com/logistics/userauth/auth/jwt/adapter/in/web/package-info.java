@@ -1,11 +1,22 @@
 /**
- * REST-контроллер и DTO для операций JWT-аутентификации.
+ * Web-адаптер (adapter.in) для JWT аутентификации и управления токенами.
  *
- * Содержит:
+ * <h2>Назначение</h2>
+ * Пакет содержит HTTP/API слой, который принимает запросы, валидирует входные данные
+ * и делегирует выполнение бизнес-сценариев в application-слой через inbound ports.
+ *
+ * <h2>Структура</h2>
  * <ul>
- *   <li><b>AuthController</b> - endpoints для sign-up, sign-in, refresh, logout</li>
- *   <li><b>JwtAuthenticationResponse</b> - ответ с accessToken и refreshToken</li>
- *   <li><b>RefreshTokenRequest</b> - запрос на refresh или logout</li>
+ *   <li><b>web</b> — контроллеры/обработчики HTTP запросов и сборка ответов.</li>
+ *   <li><b>dto</b> — request/response модели, используемые в REST API.</li>
  * </ul>
+ *
+ * <h2>DTO</h2>
+ * <ul>
+ *   <li>{@link com.logistics.userauth.auth.jwt.adapter.in.web.dto.RefreshTokenRequest}</li>
+ *   <li>{@link com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse}</li>
+ * </ul>
+ *
+ * @see com.logistics.userauth.auth.jwt.adapter.in.web.dto
  */
 package com.logistics.userauth.auth.jwt.adapter.in.web;

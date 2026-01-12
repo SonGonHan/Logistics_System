@@ -1,11 +1,13 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
+import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.RegisterUserUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
+import com.logistics.userauth.sms.application.port.out.SmsRepository;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import com.logistics.userauth.user.domain.User;
 import com.logistics.userauth.user.domain.UserRole;
@@ -39,6 +41,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class RegisterUserService implements RegisterUserUseCase {
     private final UserRepository userRepository;
+    private final SmsRepository smsRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenGeneratorPort tokenGenerator;
     private final InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
@@ -64,6 +67,8 @@ public class RegisterUserService implements RegisterUserUseCase {
      */
     @Override
     public JwtAuthenticationResponse register(RegisterUserCommand command) {
+        validatePhoneVerification(command.phone());
+
         var user = User.builder()
                 .email(command.email())
                 .phone(command.phone())
@@ -79,6 +84,8 @@ public class RegisterUserService implements RegisterUserUseCase {
 
         var saved = userRepository.save(user);
 
+        smsRepository.deleteVerificationStatus(command.phone());
+
         var accessToken = tokenGenerator.generateAccessToken(saved);
 
         var refreshToken = createRefreshTokenUseCase.create(
@@ -89,5 +96,13 @@ public class RegisterUserService implements RegisterUserUseCase {
                         .build()
         );
         return new JwtAuthenticationResponse(accessToken, refreshToken);
+    }
+
+    private void validatePhoneVerification(String phone) {
+        if (!smsRepository.isPhoneVerified(phone)) {
+            throw new PhoneNotVerifiedException(
+                    "Необходимо подтвердить номер телефона перед регистрацией"
+            );
+        }
     }
 }

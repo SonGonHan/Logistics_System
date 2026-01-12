@@ -10,6 +10,8 @@
  *   <li><b>@SignInOperation</b> - Аннотирует endpoint входа</li>
  *   <li><b>@RefreshOperation</b> - Аннотирует endpoint обновления токена</li>
  *   <li><b>@LogoutOperation</b> - Аннотирует endpoint выхода</li>
+ *   <li><b>@SendVerificationCodeOperation</b> - Аннотирует endpoint отправления кода</li>
+ *   <li><b>@LogoutOperation</b> - Аннотирует endpoint подтверждения </li>
  * </ul>
  *
  * Использование:

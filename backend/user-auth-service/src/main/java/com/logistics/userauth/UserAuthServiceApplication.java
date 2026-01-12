@@ -1,5 +1,6 @@
 package com.logistics.userauth;
 
+import com.logistics.shared.redis.EnableRedis;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
@@ -14,7 +15,8 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * - Инициализирует Spring Boot приложение
  * - Подключает shared-library компоненты
  * - Импортирует OpenAPI конфигурацию
- * - Сканирует все @Component, @Service, @Controller в com.logistics.userauth
+ * - Импортирует Redis конфигурацию
+ * - Сканирует все @Component, @Service, @Controller в com.logistics.userauth и com.logistics.shared
  *
  * <h2>Архитектура</h2>
  * Используется Clean Architecture (Hexagonal Architecture):
@@ -39,6 +41,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * @since 2025-12-15
  */
 @SpringBootApplication
+@EnableRedis
 @ComponentScan(basePackages = {
         "com.logistics.userauth",
         "com.logistics.shared"

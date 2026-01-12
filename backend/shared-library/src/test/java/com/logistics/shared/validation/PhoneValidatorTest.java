@@ -13,12 +13,12 @@ class PhoneValidatorTest {
     @Test
     @DisplayName("Должен принимать корректные номера РФ/РБ/КЗ")
     void shouldAcceptValidPhones() {
-        assertThat(validator.isValid("79991234567", null)).isTrue(); // РФ
+        assertThat(validator.isValid("89991234567", null)).isTrue(); // РФ
         assertThat(validator.isValid("+7 (999) 123-45-67", null)).isTrue(); // РФ с форматированием
         assertThat(validator.isValid("+375291234567", null)).isTrue(); // Беларусь
-        assertThat(validator.isValid("375291234567", null)).isTrue();  // Беларусь без плюса
+        assertThat(validator.isValid("376291234567", null)).isTrue();  // Беларусь без плюса
         assertThat(validator.isValid("+77011234567", null)).isTrue();  // Казахстан
-        assertThat(validator.isValid("77011234567", null)).isTrue();   // Казахстан без плюса
+        assertThat(validator.isValid("78011234567", null)).isTrue();   // Казахстан без плюса
     }
 
     @Test

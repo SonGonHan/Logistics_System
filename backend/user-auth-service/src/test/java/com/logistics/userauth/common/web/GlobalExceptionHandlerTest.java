@@ -1,130 +1,211 @@
 package com.logistics.userauth.common.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
+import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
+import com.logistics.userauth.sms.application.exception.InvalidVerificationCodeException;
+import com.logistics.userauth.sms.application.exception.RateLimitExceededException;
+import com.logistics.userauth.sms.application.exception.SmsDeliveryException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.validation.BeanPropertyBindingResult;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("GlobalExceptionHandler: обработка типичных ошибок")
+@WebMvcTest(
+        excludeAutoConfiguration = {
+                org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class
+        }
+)
+@Import({
+        GlobalExceptionHandler.class,
+        GlobalExceptionHandlerTest.TestController.class
+})
+@DisplayName("GlobalExceptionHandler - тестирование обработки исключений")
 class GlobalExceptionHandlerTest {
 
-    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    // ========== КОНФИГУРАЦИЯ ==========
+
+    @Configuration
+    @EnableWebSecurity
+    static class TestSecurityConfig {
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+            http
+                    .csrf(AbstractHttpConfigurer::disable)
+                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+            return http.build();
+        }
+    }
+
+
+    // ========== ТЕСТЫ ==========
 
     @Test
     @DisplayName("Должен возвращать 401 и INVALID_CREDENTIALS при BadCredentialsException")
-    void shouldHandleBadCredentials() {
-        BadCredentialsException ex = new BadCredentialsException("Invalid credentials");
-
-        ResponseEntity<Map<String, Object>> response = handler.handleBadCredentials(ex);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().get("error")).isEqualTo("INVALID_CREDENTIALS");
-        assertThat(response.getBody().get("message")).isEqualTo("Неверный телефон или пароль");
+    void shouldHandleBadCredentials() throws Exception {
+        mockMvc.perform(post("/test/bad-credentials"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.message").value("Неверный телефон или пароль"));
     }
 
     @Test
     @DisplayName("Должен возвращать 409 и CONFLICT при DataIntegrityViolationException")
-    void shouldHandleDataIntegrityViolation() {
-        DataIntegrityViolationException ex =
-                new DataIntegrityViolationException("duplicate key value violates unique constraint");
-
-        ResponseEntity<Map<String, Object>> response = handler.handleDataIntegrity(ex);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().get("error")).isEqualTo("CONFLICT");
-        assertThat(response.getBody().get("message"))
-                .isEqualTo("Пользователь с таким телефоном или email уже существует");
+    void shouldHandleDataIntegrityViolation() throws Exception {
+        mockMvc.perform(post("/test/data-integrity"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("CONFLICT"))
+                .andExpect(jsonPath("$.message").value("Пользователь с таким телефоном или email уже существует"));
     }
 
     @Test
     @DisplayName("Должен возвращать 400 и VALIDATION_FAILED при ошибках Bean Validation")
     void shouldHandleValidationErrors() throws Exception {
-        // имитируем DTO с ошибкой в поле "phone"
-        class DummyDto {
-            @SuppressWarnings("unused")
-            private String phone;
-        }
+        var invalidRequest = new TestRequest("");
 
-        DummyDto target = new DummyDto();
-        BeanPropertyBindingResult bindingResult =
-                new BeanPropertyBindingResult(target, "dummyDto");
-        bindingResult.addError(new FieldError("dummyDto", "phone",
-                "Неверный формат телефона"));
-
-        MethodArgumentNotValidException ex =
-                new MethodArgumentNotValidException(null, bindingResult);
-
-        ResponseEntity<Map<String, Object>> response = handler.handleValidation(ex);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().get("error")).isEqualTo("VALIDATION_FAILED");
-
-        @SuppressWarnings("unchecked")
-        Map<String, String> fields = (Map<String, String>) response.getBody().get("fields");
-        assertThat(fields).containsEntry("phone", "Неверный формат телефона");
+        mockMvc.perform(post("/test/validation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.fields.phone").value("Неверный формат телефона"));
     }
 
     @Test
     @DisplayName("Должен обработать InvalidRefreshTokenException и вернуть 401")
-    void shouldHandleInvalidRefreshToken() {
-        // Given
-        var exception = new InvalidRefreshTokenException("Invalid refresh token");
-
-        // When
-        ResponseEntity<Map<String, Object>> response =
-                handler.handleInvalidRefreshToken(exception);
-
-        // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().get("error")).isEqualTo("INVALID_REFRESH_TOKEN");
-        assertThat(response.getBody().get("message")).isEqualTo("Invalid refresh token");
+    void shouldHandleInvalidRefreshToken() throws Exception {
+        mockMvc.perform(post("/test/invalid-refresh-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("INVALID_REFRESH_TOKEN"))
+                .andExpect(jsonPath("$.message").value("Invalid refresh token"));
     }
 
     @Test
-    @DisplayName("Должен обработать InvalidRefreshTokenException с сообщением об истечении срока")
-    void shouldHandleExpiredRefreshToken() {
-        // Given
-        var exception = new InvalidRefreshTokenException("Refresh token has expired");
-
-        // When
-        ResponseEntity<Map<String, Object>> response =
-                handler.handleInvalidRefreshToken(exception);
-
-        // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().get("error")).isEqualTo("INVALID_REFRESH_TOKEN");
-        assertThat(response.getBody().get("message")).isEqualTo("Refresh token has expired");
+    @DisplayName("Должен обработать RateLimitExceededException и вернуть 429")
+    void shouldHandleRateLimitExceeded() throws Exception {
+        mockMvc.perform(post("/test/rate-limit"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.error").value("RATE_LIMIT_EXCEEDED"))
+                .andExpect(jsonPath("$.message").value(containsString("60 сек")));
     }
 
     @Test
-    @DisplayName("Должен обработать InvalidRefreshTokenException с сообщением об отзыве")
-    void shouldHandleRevokedRefreshToken() {
-        // Given
-        var exception = new InvalidRefreshTokenException("Refresh token has been revoked");
+    @DisplayName("Должен обработать SmsDeliveryException и вернуть 500")
+    void shouldHandleSmsDeliveryException() throws Exception {
+        mockMvc.perform(post("/test/sms-delivery-error"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error").value("SMS_DELIVERY_FAILED"))
+                .andExpect(jsonPath("$.message").value("Не удалось отправить SMS. Повторите попытку позже."));
+    }
 
-        // When
-        ResponseEntity<Map<String, Object>> response =
-                handler.handleInvalidRefreshToken(exception);
+    @Test
+    @DisplayName("Должен обработать PhoneNotVerifiedException и вернуть 500")
+    void shouldHandlePhoneNotVerifiedException() throws Exception {
+        mockMvc.perform(post("/test/phone-not-verified"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("PHONE_NOT_VERIFIED"))
+                .andExpect(jsonPath("$.message").value("Телефон не верифицирован"));
+    }
 
-        // Then
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(response.getBody()).isNotNull();
-        assertThat(response.getBody().get("error")).isEqualTo("INVALID_REFRESH_TOKEN");
-        assertThat(response.getBody().get("message")).isEqualTo("Refresh token has been revoked");
+    @Test
+    @DisplayName("Должен обработать InvalidVerificationCodeException и вернуть 400")
+    void shouldHandleInvalidVerificationCode() throws Exception {
+        mockMvc.perform(post("/test/invalid-verification-code"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("INVALID_VERIFICATION_CODE"))
+                .andExpect(jsonPath("$.message").value("Неверный код верификации"));
+    }
+
+
+
+
+    // ========== ТЕСТОВЫЙ КОНТРОЛЛЕР ==========
+
+    @RestController
+    static class TestController {
+
+        @PostMapping("/test/bad-credentials")
+        public void testBadCredentials() {
+            throw new BadCredentialsException("Invalid credentials");
+        }
+
+        @PostMapping("/test/data-integrity")
+        public void testDataIntegrity() {
+            throw new DataIntegrityViolationException("duplicate key");
+        }
+
+        @PostMapping("/test/validation")
+        public void testValidation(@Valid @RequestBody TestRequest request) {
+        }
+
+        @PostMapping("/test/invalid-refresh-token")
+        public void testInvalidRefreshToken() {
+            throw new InvalidRefreshTokenException("Invalid refresh token");
+        }
+
+        @PostMapping("/test/rate-limit")
+        public void testRateLimit() {
+            throw new RateLimitExceededException("Слишком много запросов. Повторите через 60 сек.");
+        }
+
+        @PostMapping("/test/invalid-verification-code")
+        public void testInvalidVerificationCode() {
+            throw new InvalidVerificationCodeException("Неверный код верификации");
+        }
+
+        @PostMapping("/test/phone-not-verified")
+        public void testPhoneNotVerified() {
+            throw new PhoneNotVerifiedException("Телефон не верифицирован");
+        }
+
+        @PostMapping("/test/sms-delivery-error")
+        public void testSmsDeliveryError() {
+            throw new SmsDeliveryException("Не удалось отправить SMS. Повторите попытку позже.");
+        }
+
+
+    }
+
+    // ========== ТЕСТОВЫЕ DTO ==========
+
+    @Data
+    @NoArgsConstructor
+    static class TestRequest {
+        @NotBlank(message = "Неверный формат телефона")
+        private String phone;
+
+        public TestRequest(String phone) {
+            this.phone = phone;
+        }
     }
 }

@@ -15,11 +15,9 @@ import com.logistics.userauth.common.api.LogoutOperation;
 import com.logistics.userauth.common.api.RefreshOperation;
 import com.logistics.userauth.common.api.SignInOperation;
 import com.logistics.userauth.common.api.SignUpOperation;
+import com.logistics.userauth.sms.application.port.in.VerifyPhoneUseCase;
 import com.logistics.userauth.user.adapter.in.web.dto.SignInRequest;
 import com.logistics.userauth.user.adapter.in.web.dto.SignUpRequest;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -32,10 +30,12 @@ import org.springframework.web.bind.annotation.*;
  * REST контроллер для аутентификации и работы с токенами.
  *
  * <h2>Endpoints</h2>
- * - POST /auth/sign-up - Регистрация нового пользователя
- * - POST /auth/sign-in - Вход в систему
- * - POST /auth/refresh - Обновление access токена
- * - POST /auth/logout - Выход из системы (отзыв refresh токена)
+ * <ul>
+ *   <li>POST /api/v1/auth/register — Регистрация нового пользователя</li>
+ *   <li>POST /api/v1/auth/sign-in — Вход в систему</li>
+ *   <li>POST /api/v1/auth/refresh — Обновление access token</li>
+ *   <li>POST /api/v1/auth/logout — Отзыв refresh token</li>
+ * </ul>
  *
  * <h2>Security</h2>
  * Все endpoints исключены из JWT фильтра (shouldNotFilter).

@@ -19,24 +19,28 @@ import java.lang.annotation.*;
  *
  * <h2>Примеры использования</h2>
  * <pre>
- * \\@Password
+ * //@Password
  * private String password;
  *
- * \\@Password(message = \"Пароль слишком слабый\")
+ * //@Password(message = \"Пароль слишком слабый\")
  * String password;
  * </pre>
  *
  * <h2>Примеры валидных паролей</h2>
- * - Password123!
- * - Qwerty1@
- * - MyP@ssw0rd
- * - Admin#2025!
+ * <ul>
+ *   <li>Password123!</li>
+ *   <li>Qwerty1@</li>
+ *   <li>MyP@ssw0rd</li>
+ *   <li>Admin#2025!</li>
+ * </ul>
  *
  * <h2>Примеры невалидных паролей</h2>
- * - password123 (нет заглавной и спецсимвола)
- * - Password! (нет цифр)
- * - Pass1! (меньше 8 символов)
- * - PASSWORD123! (нет строчных)
+ * <ul>
+ *   <li>password123 (нет заглавной и спецсимвола)</li>
+ *   <li>Password! (нет цифр)</li>
+ *   <li>Pass1! (меньше 8 символов)</li>
+ *   <li>PASSWORD123! (нет строчных)</li>
+ * </ul>
  *
  * @see PasswordValidator для реализации валидации
  */
