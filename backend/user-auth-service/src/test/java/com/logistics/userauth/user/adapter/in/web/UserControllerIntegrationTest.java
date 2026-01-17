@@ -28,11 +28,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @IntegrationTest
-@AutoConfigureMockMvc(addFilters = false) // аутентификацию прокидываем через request.principal(...)
+@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 @DisplayName("UserController - интеграционный тест")
 class UserControllerIntegrationTest {
@@ -96,7 +96,7 @@ class UserControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /users/me: обновляет профиль и возвращает обновлённые данные")
+    @DisplayName("PUT /users/me: обновляет профиль и возвращает обновлённые данные")
     void shouldUpdateUserInfo() throws Exception {
         // Given
         var request = new UserUpdateRequest(
@@ -120,7 +120,7 @@ class UserControllerIntegrationTest {
         when(updateUserInfoUseCase.update(any(UpdateUserInfoCommand.class))).thenReturn(expected);
 
         // When / Then
-        mockMvc.perform(post(ME_URL)
+        mockMvc.perform(put(ME_URL)
                         .principal(authenticationWithUserId(7L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -144,7 +144,7 @@ class UserControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /users/me: возвращает 400 при невалидном email (валидация DTO)")
+    @DisplayName("PUT /users/me: возвращает 400 при невалидном email (валидация DTO)")
     void shouldReturn400ForInvalidEmail() throws Exception {
         // Given
         var request = new UserUpdateRequest(
@@ -158,7 +158,7 @@ class UserControllerIntegrationTest {
         );
 
         // When / Then
-        mockMvc.perform(post(ME_URL)
+        mockMvc.perform(put(ME_URL)
                         .principal(authenticationWithUserId(7L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -170,7 +170,7 @@ class UserControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /users/me: возвращает 401, если пользователь не аутентифицирован")
+    @DisplayName("PUT /users/me: возвращает 401, если пользователь не аутентифицирован")
     void shouldReturn401WhenNoAuthentication() throws Exception {
         // Given
         var request = new UserUpdateRequest(
@@ -185,7 +185,7 @@ class UserControllerIntegrationTest {
 
 
         // When / Then
-        mockMvc.perform(post(ME_URL)
+        mockMvc.perform(put(ME_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());

@@ -1,5 +1,6 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
+import com.logistics.shared.utils.PhoneUtils;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
 import com.logistics.userauth.auth.jwt.adapter.out.JwtTokenProvider;
 import com.logistics.userauth.auth.jwt.application.port.in.AuthenticateUserUseCase;
@@ -60,7 +61,9 @@ public class AuthenticateUserService implements AuthenticateUserUseCase {
      */
     @Override
     public JwtAuthenticationResponse authenticate(AuthenticateUserCommand command) {
-        var user = userRepository.findByPhone(command.phone())
+        var normalizedPhone = PhoneUtils.normalize(command.phone());
+
+        var user = userRepository.findByPhone(normalizedPhone)
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
         if (!passwordEncoder.matches(command.password(), user.getPasswordHash())) {

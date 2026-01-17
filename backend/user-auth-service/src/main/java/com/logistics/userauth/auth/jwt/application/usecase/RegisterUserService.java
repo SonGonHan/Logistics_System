@@ -1,5 +1,6 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
+import com.logistics.shared.utils.PhoneUtils;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
 import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
@@ -67,11 +68,13 @@ public class RegisterUserService implements RegisterUserUseCase {
      */
     @Override
     public JwtAuthenticationResponse register(RegisterUserCommand command) {
-        validatePhoneVerification(command.phone());
+        var normalizedPhone = PhoneUtils.normalize(command.phone());
+
+        validatePhoneVerification(normalizedPhone);
 
         var user = User.builder()
                 .email(command.email())
-                .phone(command.phone())
+                .phone(normalizedPhone)
                 .passwordHash(passwordEncoder.encode(command.rawPassword()))
                 .firstName(command.firstName())
                 .lastName(command.lastName())

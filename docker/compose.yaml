@@ -147,7 +147,7 @@ services:
       TZ: Europe/Moscow
 
     ports:
-      - "${USER_AUTH_SERVICE_PORT:-8080}:8080"
+      - "${USER_AUTH_SERVICE_PORT:-8081}:8080"
 
     volumes:
       - logs:/logs
@@ -175,29 +175,28 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  web-frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.dev  # <-- Используем dev-версию
+    container_name: logistics-web-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # <-- Vite/CRA порт (обычно 3000 или 5173), а не 80
+    volumes:
+      - ../frontend/src:/app/src     # <-- Прокидываем исходники
+      - ../frontend/public:/app/public # <-- Если есть public, его тоже полезно
+      - /app/node_modules            # <-- Изолируем node_modules контейнера
 
-  # ==========================================
-  # FUTURE SERVICES (закомментированы)
-  # ==========================================
+    # Чтобы корректно работал Hot Reload в Docker (особенно Vite)
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - WDS_SOCKET_PORT=0
 
-  # redis:
-  #   image: redis:7-alpine
-  #   container_name: logistics-redis
-  #   restart: unless-stopped
-  #   ports:
-  #     - "6379:6379"
-  #   networks:
-  #     - logistics-network
+    depends_on:
+      user-auth-service:
+        condition: service_started
+    networks:
+      - logistics-network
 
-  # rabbitmq:
-  #   image: rabbitmq:3-management-alpine
-  #   container_name: logistics-rabbitmq
-  #   restart: unless-stopped
-  #   environment:
-  #     RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-admin}
-  #     RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-password}
-  #   ports:
-  #     - "5672:5672"
-  #     - "15672:15672"
-  #   networks:
-  #     - logistics-network

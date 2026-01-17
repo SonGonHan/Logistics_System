@@ -1,5 +1,6 @@
 package com.logistics.userauth.sms.application.usecase;
 
+import com.logistics.shared.utils.PhoneUtils;
 import com.logistics.userauth.sms.application.exception.InvalidVerificationCodeException;
 import com.logistics.userauth.sms.application.port.in.VerifyPhoneUseCase;
 import com.logistics.userauth.sms.application.port.in.command.VerifyPhoneCommand;
@@ -33,16 +34,18 @@ public class VerifyPhoneService implements VerifyPhoneUseCase {
      */
     @Override
     public void verify(VerifyPhoneCommand command) {
-        log.info("Verifying phone: {}", command.phone());
+        var normalizedPhone = PhoneUtils.normalize(command.phone());
 
-        var storedCode = repository.findByPhone(command.phone())
+        log.info("Verifying phone: {}", normalizedPhone);
+
+        var storedCode = repository.findByPhone(normalizedPhone)
                 .orElseThrow(() -> new InvalidVerificationCodeException(
                         "Код не найден. Запросите новый код."
                 ));
 
         if (storedCode.isExpired()) {
-            repository.deleteVerificationCode(command.phone());
-            log.warn("Verification code expired for phone: {}", command.phone());
+            repository.deleteVerificationCode(normalizedPhone);
+            log.warn("Verification code expired for phone: {}", normalizedPhone);
             throw new InvalidVerificationCodeException(
                     "Срок действия кода истек. Запросите новый код."
             );
@@ -51,25 +54,25 @@ public class VerifyPhoneService implements VerifyPhoneUseCase {
         if (!storedCode.getCode().equals(command.code())) {
             int newAttempts = storedCode.getAttempts() + 1;
 
-            repository.incrementAttempts(command.phone());
+            repository.incrementAttempts(normalizedPhone);
 
             if (newAttempts >= maxAttempts) {
-                repository.deleteVerificationCode(command.phone());
-                log.warn("Max attempts reached for phone: {}", command.phone());
+                repository.deleteVerificationCode(normalizedPhone);
+                log.warn("Max attempts reached for phone: {}", normalizedPhone);
                 throw new InvalidVerificationCodeException("Неверный код. Превышено количество попыток.");
             }
 
             int remainingAttempts = maxAttempts - newAttempts;
-            log.warn("Invalid code for phone: {}. Remaining attempts: {}", command.phone(), remainingAttempts);
+            log.warn("Invalid code for phone: {}. Remaining attempts: {}", normalizedPhone, remainingAttempts);
             throw new InvalidVerificationCodeException(
                     String.format("Неверный код. Осталось попыток: %d", remainingAttempts)
             );
         }
 
 
-        repository.deleteVerificationCode(command.phone());
-        repository.markPhoneAsVerified(command.phone(), verifiedStatusTtlMinutes);
+        repository.deleteVerificationCode(normalizedPhone);
+        repository.markPhoneAsVerified(normalizedPhone, verifiedStatusTtlMinutes);
 
-        log.info("Phone verified successfully: {}", command.phone());
+        log.info("Phone verified successfully: {}", normalizedPhone);
     }
 }

@@ -1,5 +1,6 @@
 package com.logistics.shared.validation;
 
+import com.logistics.shared.utils.PhoneUtils;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
@@ -15,10 +16,9 @@ import jakarta.validation.ConstraintValidatorContext;
  *   <li>Возвращает true если совпадает, false в противном случае</li>
  * </ol>
  *
- * <h2>Regex парттерны</h2>
- * - Россия: ^(?:\\\\+7|7)\\\\d{10}$ (11-12 цифр)
+ * <h2>Regex паттерны</h2>
+ * - Россия/Казахстан: ^(?:\\\\+7|7)\\\\d{10}$ (11-12 цифр)
  * - Беларусь: ^(?:\\\\+375|375)\\\\d{9}$ (12-13 цифр)
- * - Казахстан: ^(?:\\\\+77|77)\\\\d{9}$ (11-12 цифр)
  *
  * <h2>Примеры</h2>
  * <pre>
@@ -37,9 +37,8 @@ public class PhoneValidator implements ConstraintValidator<Phone, String> {
 
 
     private static final String REGEX =
-            "^(?:\\+7|8)\\d{10}$" +              // Россия
-                    "|^(?:\\+375|376)\\d{9}$" +         // Беларусь
-                    "|^(?:\\+77|78)\\d{9}$";            // Казахстан
+            "^(?:\\+7|8)\\d{10}$" +              // Россия/Казахстан
+                    "|^(?:\\+375|376)\\d{9}$";   // Беларусь
 
     /**
      * Валидирует телефонный номер.
@@ -53,8 +52,10 @@ public class PhoneValidator implements ConstraintValidator<Phone, String> {
         if (value == null || value.isBlank()) {
             return false;
         }
-        String normalized = value.replaceAll("[\\s\\-()]", "");
+
+        String normalized = PhoneUtils.normalize(value);
         return normalized.matches(REGEX);
     }
+
 }
 

@@ -1,0 +1,21 @@
+# Используем Node.js для разработки
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Копируем только файлы зависимостей
+COPY package.json package-lock.json ./
+
+# Устанавливаем зависимости
+RUN npm install
+
+# Копируем исходный код (хотя volume все равно перекроет это, но для первой сборки нужно)
+COPY . .
+
+# Открываем порт (Vite использует 5173, CRA - 3000)
+# Укажите тот, который в вашем package.json в скрипте dev/start
+EXPOSE 3000
+
+# Запускаем сервер разработки
+# Для Vite обычно "npm run dev", для CRA "npm start"
+CMD ["npm", "start"]

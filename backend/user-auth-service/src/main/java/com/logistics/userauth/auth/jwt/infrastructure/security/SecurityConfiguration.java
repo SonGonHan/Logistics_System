@@ -17,6 +17,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 /**
  * Конфигурация Spring Security для JWT-based аутентификации.
@@ -35,6 +36,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  *
  * @see JwtAuthenticationFilter для деталей обработки JWT
  * @see LogisticsUserDetailsService для загрузки пользователя из БД
+ * @see CorsConfigurationSource для настройки межсетевых запросов
  */
 @Configuration
 @EnableWebSecurity
@@ -46,6 +48,8 @@ public class SecurityConfiguration {
 
     private final LogisticsUserDetailsService userDetailsService;
 
+    private final CorsConfigurationSource corsConfigurationSource;
+
     /**
      * Определяет цепочку фильтров безопасности.
      *
@@ -56,6 +60,8 @@ public class SecurityConfiguration {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
+
                 .csrf(csrf -> csrf.disable())
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

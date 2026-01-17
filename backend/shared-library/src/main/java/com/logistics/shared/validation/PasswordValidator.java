@@ -45,4 +45,5 @@ public class PasswordValidator implements ConstraintValidator<Password, String> 
         }
         return value.matches(REGEX);
     }
+
 }

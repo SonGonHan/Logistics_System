@@ -1,12 +1,11 @@
 /**
  * Spring Security конфигурация для JWT-аутентификации.
  *
- * Регистрирует:
+ * Содержит:
  * <ul>
- *   <li>JWT-фильтр (JwtAuthenticationFilter)</li>
- *   <li>Правила доступа к endpoint'ам</li>
+ *   <li>{@link com.logistics.userauth.auth.jwt.infrastructure.security.SecurityConfiguration} — JWT-фильтр (JwtAuthenticationFilter), правила доступа к endpoint'ам</li>
+ *   <li>{@link com.logistics.userauth.auth.jwt.infrastructure.security.WebCorsConfiguration} — CORS для фронтенд-приложений (localhost:3000)</li>
  *   <li>Обработчики ошибок безопасности</li>
- *   <li>CORS и другие безопасностные header'ы</li>
  * </ul>
  */
 package com.logistics.userauth.auth.jwt.infrastructure.security;

@@ -71,7 +71,7 @@ public class UserController {
      * @return HTTP 200 с обновлёнными данными пользователя ({@link com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse}).
      * @throws org.springframework.web.server.ResponseStatusException со статусом 401, если пользователь не аутентифицирован.
      */
-    @PostMapping("/me")
+    @PutMapping("/me")
     @UpdateInfoOperation
     public ResponseEntity<UserInfoResponse> updateInfo(
             Authentication authentication,

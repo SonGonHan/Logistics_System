@@ -1,6 +1,7 @@
 package com.logistics.userauth.sms.application.usecase;
 
 import com.logistics.shared.redis.service.RateLimiterService;
+import com.logistics.shared.utils.PhoneUtils;
 import com.logistics.userauth.sms.application.exception.RateLimitExceededException;
 import com.logistics.userauth.sms.application.exception.SmsDeliveryException;
 import com.logistics.userauth.sms.application.port.in.InternalSmsRateLimiterUseCase;
@@ -65,36 +66,38 @@ public class SendVerificationCodeService implements SendVerificationCodeUseCase 
      */
     @Override
     public void sendCode(SendVerificationCodeCommand command) {
-        log.info("Sending verification code to phone: {}", command.phone());
+        String normalizedPhone = PhoneUtils.normalize(command.phone());
 
-        var smsRateLimiterCommand = new InternalSmsRateLimiterCommand(command.phone());
+        log.info("Sending verification code to phone: {}", normalizedPhone);
+
+        var smsRateLimiterCommand = new InternalSmsRateLimiterCommand(normalizedPhone);
 
         internalSmsRateLimiterUseCase.checkRateLimiter(smsRateLimiterCommand);
 
-//        ensureNoActiveCode(command.phone());
+//        ensureNoActiveCode(normalizedPhone);
 
         var code = generateSecureCode();
 
         var verificationCode = SmsVerificationCode.builder()
-                .phone(command.phone())
+                .phone(normalizedPhone)
                 .code(code)
                 .expiresAt(LocalDateTime.now().plusMinutes(codeTtlMinutes))
                 .attempts(0)
                 .build();
 
         smsRepository.save(verificationCode, codeTtlMinutes);
-        log.debug("Verification code saved to repository: phone={}", command.phone());
+        log.debug("Verification code saved to repository: phone={}", normalizedPhone);
 
-        var isSent = sendSmsPort.sendVerificationCode(command.phone(), code);
+        var isSent = sendSmsPort.sendVerificationCode(normalizedPhone, code);
 
         if (!isSent) {
-            log.error("Failed to send SMS to phone: {}", command.phone());
+            log.error("Failed to send SMS to phone: {}", normalizedPhone);
             throw new SmsDeliveryException(
                     "Не удалось отправить SMS. Попробуйте позже или обратитесь в поддержку."
             );
         }
 
-        log.info("Verification code sent successfully: phone={}", command.phone());
+        log.info("Verification code sent successfully: phone={}", normalizedPhone);
     }
 
     /**

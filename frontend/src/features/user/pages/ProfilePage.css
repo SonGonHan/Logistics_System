@@ -1,0 +1,98 @@
+/* frontend/src/features/user/pages/ProfilePage.css */
+
+.profile-page {
+    /* Расширяем контейнер для профиля, если нужно */
+    max-width: 800px;
+}
+
+/* Карточки секций */
+.profile-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+/* Заголовки секций */
+.profile-section h3 {
+    margin-top: 0;
+    margin-bottom: 24px; /* Увеличили отступ снизу */
+    font-size: 18px;
+    color: #111827;
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 12px;
+}
+
+/* Отображение телефона */
+.phone-display {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+/* Группировка полей (Фамилия Имя Отчество в ряд) */
+.form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px; /* Чуть увеличили отступ снизу */
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+/* Вторичные кнопки (серые) */
+.btn-secondary {
+    width: auto;
+    background-color: #f3f4f6;
+    color: #374151;
+    font-size: 14px;
+    padding: 8px 16px;
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: #e5e7eb;
+}
+
+/* Текстовые кнопки (ссылки) */
+.btn-text {
+    width: auto;
+    background: none;
+    color: #6b7280;
+    padding: 8px;
+    text-decoration: underline;
+    font-size: 14px;
+}
+
+.btn-text:hover {
+    color: #111827;
+    background: none;
+}
+
+/* Блок действий (кнопки рядом в смене телефона) */
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 24px; /* !!! Увеличили отступ сверху для кнопок в смене телефона */
+}
+
+.actions button {
+    width: auto; /* Кнопки по ширине контента */
+}
+
+/* Кнопки отправки форм (Обновить пароль, Сохранить изменения) */
+.profile-section form > button[type="submit"] {
+    margin-top: 24px; /* !!! Добавили явный отступ сверху для основных кнопок */
+    width: 100%; /* На всякий случай возвращаем на всю ширину, если сбилось */
+}
+
+/* Разделитель (если используете hr) */
+.divider {
+    border: 0;
+    border-top: 1px solid #e5e7eb;
+    margin: 32px 0;
+}
