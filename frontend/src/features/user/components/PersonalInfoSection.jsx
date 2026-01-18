@@ -25,7 +25,7 @@ export default function PersonalInfoSection({ user, onUpdate }) {
         e.preventDefault();
         setLoading(true);
         try {
-            const updatedUser = await userApi.updateProfile(form);
+            const updatedUser = await userApi.updatePersonalInfo(form);
             onUpdate(updatedUser);
             alert('Данные сохранены');
         } catch (err) {

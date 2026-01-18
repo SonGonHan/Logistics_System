@@ -1,6 +1,7 @@
 package com.logistics.userauth.auth.jwt.adapter.in.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.logistics.shared.utils.PhoneUtils;
 import com.logistics.userauth.IntegrationTest;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.RefreshTokenRequest;
 import com.logistics.userauth.sms.application.port.out.SendSmsPort;
@@ -52,9 +53,9 @@ class AuthControllerIntegrationTest {
     @DisplayName("Должен успешно зарегистрировать пользователя и вернуть JWT токены")
     void shouldRegisterUserAndReturnTokens() throws Exception {
         // Given - верифицируем телефон
-        String phone = "+79991111111";  // ← ИСПРАВИЛ: правильный формат!
-
-        smsRepository.markPhoneAsVerified(phone, 10L);
+        String phone = "+79991111111";
+        String normalizedPhone = PhoneUtils.normalize(phone);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         // When
         var signUpRequest = new SignUpRequest(
@@ -70,7 +71,7 @@ class AuthControllerIntegrationTest {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(signUpRequest)))
-                .andDo(print())  // ← Для отладки
+                .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accessToken").value(notNullValue()))
                 .andExpect(jsonPath("$.refreshToken").value(notNullValue()));
@@ -82,7 +83,7 @@ class AuthControllerIntegrationTest {
         // Given
         var signUpRequest = new SignUpRequest(
                 "notverified@example.com",
-                "+79992222222",  // ← ИСПРАВИЛ: правильный формат!
+                "+79992222222",
                 "Password123!",
                 "Jane",
                 "Doe",
@@ -102,11 +103,12 @@ class AuthControllerIntegrationTest {
     @DisplayName("Должен аутентифицировать пользователя и вернуть токены")
     void shouldAuthenticateUserAndReturnTokens() throws Exception {
         // Given - регистрируем пользователя
-        String phone = "+79997654321";  // ← ИСПРАВИЛ: правильный формат!
+        String phone = "+79997654321";
+        String normalizedPhone = PhoneUtils.normalize(phone);
         String password = "Password123!";
 
         // Верифицируем телефон
-        smsRepository.markPhoneAsVerified(phone, 10L);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "login@example.com",
@@ -118,8 +120,9 @@ class AuthControllerIntegrationTest {
         );
 
         mockMvc.perform(post("/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(signUpRequest)));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signUpRequest)))
+                .andExpect(status().isCreated());
 
         // When - логинимся
         var signInRequest = new SignInRequest(phone, null, password);
@@ -138,9 +141,9 @@ class AuthControllerIntegrationTest {
     @DisplayName("Должен обновить access token используя refresh token")
     void shouldRefreshAccessToken() throws Exception {
         // Given - регистрируем пользователя
-        String phone = "+79995555555";  // ← ИСПРАВИЛ: правильный формат!
-
-        smsRepository.markPhoneAsVerified(phone, 10L);
+        String phone = "+79995555555";
+        String normalizedPhone = PhoneUtils.normalize(phone);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "refresh@example.com",
@@ -154,13 +157,12 @@ class AuthControllerIntegrationTest {
         MvcResult registerResult = mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(signUpRequest)))
-                .andExpect(status().isCreated())  // ← ПРОВЕРЯЕМ статус сразу!
+                .andExpect(status().isCreated())
                 .andReturn();
 
         String responseBody = registerResult.getResponse().getContentAsString();
         var authResponse = objectMapper.readTree(responseBody);
 
-        // ← ПРОВЕРКА на null!
         if (authResponse.get("refreshToken") == null) {
             throw new AssertionError("refreshToken не найден в ответе: " + responseBody);
         }
@@ -184,9 +186,9 @@ class AuthControllerIntegrationTest {
     @DisplayName("Должен успешно выполнить logout и отозвать refresh token")
     void shouldRevokeRefreshTokenOnLogout() throws Exception {
         // Given - регистрируем пользователя
-        String phone = "+79996666666";  // ← ИСПРАВИЛ: правильный формат!
-
-        smsRepository.markPhoneAsVerified(phone, 10L);
+        String phone = "+79996666666";
+        String normalizedPhone = PhoneUtils.normalize(phone);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "logout@example.com",
@@ -209,7 +211,6 @@ class AuthControllerIntegrationTest {
 
         // When - делаем logout
         var logoutRequest = new RefreshTokenRequest(refreshToken);
-
         mockMvc.perform(post("/auth/logout")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(logoutRequest)))
@@ -229,8 +230,8 @@ class AuthControllerIntegrationTest {
     void shouldReturn401ForInvalidPassword() throws Exception {
         // Given - регистрируем пользователя
         String phone = "+79993333333";
-
-        smsRepository.markPhoneAsVerified(phone, 10L);
+        String normalizedPhone = PhoneUtils.normalize(phone);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "invalid@example.com",
@@ -258,14 +259,13 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
     }
 
-
     @Test
     @DisplayName("Должен вернуть 409 при дублировании телефона")
     void shouldReturn409ForDuplicatePhone() throws Exception {
         // Given - регистрируем первого пользователя
         String phone = "+79994444444";
-
-        smsRepository.markPhoneAsVerified(phone, 10L); // 1) верификация для 1-й регистрации
+        String normalizedPhone = PhoneUtils.normalize(phone);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var firstRequest = new SignUpRequest(
                 "first@example.com",
@@ -282,7 +282,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isCreated());
 
         // ВАЖНО: после успешной регистрации сервис удаляет verification status
-        smsRepository.markPhoneAsVerified(phone, 10L); // 2) верификация для 2-й регистрации
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var secondRequest = new SignUpRequest(
                 "second@example.com",
@@ -301,5 +301,4 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLICT"));
     }
-
 }

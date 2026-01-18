@@ -1,15 +1,13 @@
 import { http } from "../../../shared/http/http";
 
 export const userApi = {
-    // GET /users/me
     getProfile() {
         return http("/users/me", {
             method: "GET",
-            withAuth: true, // Нужен токен
+            withAuth: true,
         });
     },
 
-    // PUT /users/me (обновление данных и телефона, если бэк позволяет)
     updateProfile(body) {
         return http("/users/me", {
             method: "PUT",
@@ -18,14 +16,27 @@ export const userApi = {
         });
     },
 
-    // POST /users/me/password (или как у вас на бэке реализована смена пароля)
-    // Если отдельного эндпоинта нет, удалите этот метод и используйте updateProfile
     updatePassword(body) {
-        // Пример (уточните свой путь в Swagger/документации):
         return http("/users/me/password", {
-            method: "POST", // или PUT
+            method: "PUT",
             body,
             withAuth: true,
         });
-    }
+    },
+
+    updatePersonalInfo(body) {
+        return http("/users/me/personal", {
+            method: "PATCH",          // важно: PATCH, как на бэке
+            body,                     // { firstName, lastName, middleName, email }
+            withAuth: true,
+        });
+    },
+
+    updatePhone(body) {
+        return http("/users/me/phone", {
+            method: "PUT",
+            body,
+            withAuth: true,
+        });
+    },
 };

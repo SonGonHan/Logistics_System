@@ -7,7 +7,7 @@
  *
  * <h2>Структура UserSession</h2>
  * <ul>
- *   <li><b>id</b> - Primary key (auto-generated BIGSERIAL)</li>
+ *   <li><b>userId</b> - Primary key (auto-generated BIGSERIAL)</li>
  *   <li><b>user</b> - User, владелец session'а</li>
  *   <li><b>refreshToken</b> - UUID строка (уникальный для каждой session'а)</li>
  *   <li><b>createdAt</b> - Timestamp создания (устанавливается @CreatedDate)</li>

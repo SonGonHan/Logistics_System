@@ -17,7 +17,7 @@ import java.util.Optional;
  * - findByEmail(email)
  * - findByPhone(phone)
  * - findByRole(role)
- * - findByFacilityId(id)
+ * - findByFacilityId(userId)
  *
  * @see UserEntity для сущности
  * @see UserPersistenceAdapter для использования в бизнес-логике

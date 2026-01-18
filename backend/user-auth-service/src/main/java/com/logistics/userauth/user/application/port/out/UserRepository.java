@@ -19,11 +19,11 @@ import java.util.Optional;
  * <h2>Методы</h2>
  * - save(user) - Сохранить или обновить пользователя
  * - delete(user) - Удалить пользователя
- * - findById(id) - Найти по ID
+ * - findById(userId) - Найти по ID
  * - findByPhone(phone) - Найти по телефону (уникален)
  * - findByEmail(email) - Найти по email
  * - findByRole(role) - Найти первого пользователя с ролью
- * - findByFacilityId(id) - Найти по объекту (склад, ПВЗ)
+ * - findByFacilityId(userId) - Найти по объекту (склад, ПВЗ)
  *
  * @see UserPersistenceAdapter для реализации на JPA
  * @see User для доменной сущности

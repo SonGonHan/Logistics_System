@@ -1,5 +1,5 @@
 === Проект: . ===
-Всего файлов: 274
+Всего файлов: 285
 ================================================================================
 
 ================================================================================
@@ -3600,7 +3600,7 @@ import java.util.Map;
  * - И другие действия, определенные в AuditActionType
  *
  * <h2>Структура</h2>
- * - id: Уникальный идентификатор записи в логе
+ * - userId: Уникальный идентификатор записи в логе
  * - user: Пользователь, совершивший действие
  * - actionType: Тип действия (ссылка на AuditActionType)
  * - tableName: Таблица, которая была изменена (если применимо)
@@ -6002,7 +6002,7 @@ import java.util.Optional;
  * <h2>Методы</h2>
  * - save(userSession) - Сохранить или обновить сессию
  * - delete(userSession) - Удалить сессию
- * - findById(id) - Найти по ID
+ * - findById(userId) - Найти по ID
  * - findByUser(user) - Найти по пользователю
  * - findByRefreshToken(refreshToken) - Найти по refresh-токену
  *
@@ -6065,7 +6065,7 @@ import java.time.LocalDateTime;
  * Привязана к конкретному устройству (IP + User-Agent).
  *
  * <h2>Структура</h2>
- * - id: Уникальный идентификатор сессии
+ * - userId: Уникальный идентификатор сессии
  * - user: Пользователь этой сессии
  * - refreshToken: UUID токен для обновления access token
  * - createdAt: Когда была создана сессия
@@ -6127,7 +6127,7 @@ public class UserSession {
  *
  * <h2>Структура UserSession</h2>
  * <ul>
- *   <li><b>id</b> - Primary key (auto-generated BIGSERIAL)</li>
+ *   <li><b>userId</b> - Primary key (auto-generated BIGSERIAL)</li>
  *   <li><b>user</b> - User, владелец session'а</li>
  *   <li><b>refreshToken</b> - UUID строка (уникальный для каждой session'а)</li>
  *   <li><b>createdAt</b> - Timestamp создания (устанавливается @CreatedDate)</li>
@@ -8568,13 +8568,12 @@ package com.logistics.userauth.user.adapter.in;
 package com.logistics.userauth.user.adapter.in.web;
 
 import com.logistics.userauth.common.api.GetInfoOperation;
-import com.logistics.userauth.common.api.UpdateInfoOperation;
 import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
-import com.logistics.userauth.user.adapter.in.web.dto.UserUpdateRequest;
-import com.logistics.userauth.user.application.port.in.GetUserInfoUseCase;
-import com.logistics.userauth.user.application.port.in.UpdateUserInfoUseCase;
-import com.logistics.userauth.user.application.port.in.command.GetUserInfoCommand;
-import com.logistics.userauth.user.application.port.in.command.UpdateUserInfoCommand;
+import com.logistics.userauth.user.adapter.in.web.dto.UserPasswordUpdateRequest;
+import com.logistics.userauth.user.adapter.in.web.dto.UserPersonalDataUpdateRequest;
+import com.logistics.userauth.user.adapter.in.web.dto.UserPhoneUpdateRequest;
+import com.logistics.userauth.user.application.port.in.*;
+import com.logistics.userauth.user.application.port.in.command.*;
 import com.logistics.userauth.user.infrastructure.LogisticsUserDetails;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -8610,7 +8609,9 @@ import org.springframework.web.server.ResponseStatusException;
 public class UserController {
 
     private final GetUserInfoUseCase getUserInfoUseCase;
-    private final UpdateUserInfoUseCase updateUserInfoUseCase;
+    private final UpdateUserPhoneUseCase updateUserPhoneUseCase;
+    private final UpdateUserPasswordUseCase updateUserPasswordUseCase;
+    private final UpdateUserPersonalInfoUseCase updateUserPersonalInfoUseCase;
 
     /**
      * Возвращает информацию о текущем пользователе.
@@ -8627,41 +8628,69 @@ public class UserController {
         return ResponseEntity.ok(getUserInfoUseCase.getUserInfo(command));
     }
 
-    /**
-     * Обновляет данные профиля текущего пользователя.
-     *
-     * <p>Дополнительно поддерживает смену пароля: если передан {@code newPassword},
-     * то требуется {@code oldPassword} и выполняется проверка через {@code PasswordEncoder.matches}.
-     *
-     * @param authentication контекст аутентификации; если отсутствует — запрос считается неаутентифицированным.
-     * @param request входной DTO для обновления профиля (валидируется через Bean Validation).
-     * @return HTTP 200 с обновлёнными данными пользователя ({@link com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse}).
-     * @throws org.springframework.web.server.ResponseStatusException со статусом 401, если пользователь не аутентифицирован.
-     */
-    @PostMapping("/me")
-    @UpdateInfoOperation
-    public ResponseEntity<UserInfoResponse> updateInfo(
+    @PutMapping("/me/phone")
+    public ResponseEntity<UserInfoResponse> updatePhone(
             Authentication authentication,
-            @Valid @RequestBody UserUpdateRequest request
+            @Valid @RequestBody UserPhoneUpdateRequest request
     ) {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
 
-        Long userId = ((LogisticsUserDetails) authentication.getPrincipal()).getId();
+        var userId = ((LogisticsUserDetails) authentication.getPrincipal()).getId();
 
-        var command = UpdateUserInfoCommand.builder()
+        var command = UpdateUserPhoneCommand.builder()
                 .userId(userId)
-                .email(request.email())
                 .phone(request.phone())
+                .build();
+
+        return ResponseEntity.ok(updateUserPhoneUseCase.update(command));
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> updatePassword(
+            Authentication authentication,
+            @Valid @RequestBody UserPasswordUpdateRequest request
+    ) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
+        var userId = ((LogisticsUserDetails) authentication.getPrincipal()).getId();
+
+        var command = UpdateUserPasswordCommand.builder()
+                .userId(userId)
+                .oldPassword(request.oldPassword())
+                .newPassword(request.newPassword())
+                .build();
+
+        updateUserPasswordUseCase.update(command);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/me/personal")
+    public ResponseEntity<UserInfoResponse> updatePersonalInfo(
+            Authentication authentication,
+            @Valid @RequestBody UserPersonalDataUpdateRequest request
+    ) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
+        var userId = ((LogisticsUserDetails) authentication.getPrincipal()).getId();
+
+        var command = UpdateUserPersonalInfoCommand.builder()
+                .userId(userId)
                 .firstName(request.firstName())
                 .lastName(request.lastName())
                 .middleName(request.middleName())
-                .newPassword(request.newPassword())
-                .oldPassword(request.oldPassword())
+                .email(request.email())
                 .build();
-        return ResponseEntity.ok(updateUserInfoUseCase.update(command));
+
+        return ResponseEntity.ok(updateUserPersonalInfoUseCase.update(command));
     }
+
 
 }
 
@@ -8850,42 +8879,49 @@ public record UserInfoResponse(
 
 
 ================================================================================
-Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/UserUpdateRequest.java
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/UserPasswordUpdateRequest.java
 ================================================================================
 package com.logistics.userauth.user.adapter.in.web.dto;
 
 import com.logistics.shared.validation.Password;
-import com.logistics.shared.validation.Phone;
-import jakarta.validation.constraints.Email;
-import lombok.Builder;
 
-/**
- * DTO запроса на обновление данных пользователя (профиля).
- *
- * <h2>Валидация</h2>
- * <ul>
- *   <li>{@code email} валидируется аннотацией {@link jakarta.validation.constraints.Email}.</li>
- *   <li>{@code phone} валидируется кастомной аннотацией {@link com.logistics.shared.validation.Phone}.</li>
- *   <li>{@code oldPassword}/{@code newPassword} валидируются аннотацией {@link com.logistics.shared.validation.Password}.</li>
- * </ul>
- *
- * <h2>Семантика смены пароля</h2>
- * Если {@code newPassword} передан, сервис обновления ожидает также {@code oldPassword}
- * и проверяет его соответствие сохранённому паролю пользователя.
- */
-@Builder
-public record UserUpdateRequest(
-        @Email
-        String email,
-        @Phone
-        String phone,
-        String firstName,
-        String lastName,
-        String middleName,
+public record UserPasswordUpdateRequest(
         @Password
         String oldPassword,
         @Password
         String newPassword
+) {
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/UserPersonalDataUpdateRequest.java
+================================================================================
+package com.logistics.userauth.user.adapter.in.web.dto;
+
+import jakarta.validation.constraints.Email;
+
+public record UserPersonalDataUpdateRequest(
+        String firstName,
+        String lastName,
+        String middleName,
+        @Email
+        String email
+        ) {
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/adapter/in/web/dto/UserPhoneUpdateRequest.java
+================================================================================
+package com.logistics.userauth.user.adapter.in.web.dto;
+
+import com.logistics.shared.validation.Phone;
+
+
+public record UserPhoneUpdateRequest(
+        @Phone
+        String phone
 ) {
 }
 
@@ -9047,7 +9083,7 @@ import java.util.Optional;
  * - findByEmail(email)
  * - findByPhone(phone)
  * - findByRole(role)
- * - findByFacilityId(id)
+ * - findByFacilityId(userId)
  *
  * @see UserEntity для сущности
  * @see UserPersistenceAdapter для использования в бизнес-логике
@@ -9284,6 +9320,44 @@ public interface UpdateUserInfoUseCase {
 
 
 ================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/UpdateUserPasswordUseCase.java
+================================================================================
+package com.logistics.userauth.user.application.port.in;
+
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPasswordCommand;
+
+public interface UpdateUserPasswordUseCase {
+    void update(UpdateUserPasswordCommand command);
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/UpdateUserPersonalInfoUseCase.java
+================================================================================
+package com.logistics.userauth.user.application.port.in;
+
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPersonalInfoCommand;
+
+public interface UpdateUserPersonalInfoUseCase {
+    UserInfoResponse update(UpdateUserPersonalInfoCommand command);
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/UpdateUserPhoneUseCase.java
+================================================================================
+package com.logistics.userauth.user.application.port.in;
+
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPhoneCommand;
+
+public interface UpdateUserPhoneUseCase {
+    UserInfoResponse update(UpdateUserPhoneCommand command);
+}
+
+
+================================================================================
 Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/command/GetUserInfoCommand.java
 ================================================================================
 package com.logistics.userauth.user.application.port.in.command;
@@ -9331,6 +9405,55 @@ public record UpdateUserInfoCommand (
         String middleName,
         String oldPassword,
         String newPassword
+) {
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/command/UpdateUserPasswordCommand.java
+================================================================================
+package com.logistics.userauth.user.application.port.in.command;
+
+import lombok.Builder;
+
+@Builder
+public record UpdateUserPasswordCommand(
+        Long userId,
+        String oldPassword,
+        String newPassword
+) {
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/command/UpdateUserPersonalInfoCommand.java
+================================================================================
+package com.logistics.userauth.user.application.port.in.command;
+
+import lombok.Builder;
+
+@Builder
+public record UpdateUserPersonalInfoCommand(
+        Long userId,
+        String firstName,
+        String lastName,
+        String middleName,
+        String email
+) {
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/port/in/command/UpdateUserPhoneCommand.java
+================================================================================
+package com.logistics.userauth.user.application.port.in.command;
+
+import lombok.Builder;
+
+@Builder
+public record UpdateUserPhoneCommand(
+        Long userId,
+        String phone
 ) {
 }
 
@@ -9388,11 +9511,11 @@ import java.util.Optional;
  * <h2>Методы</h2>
  * - save(user) - Сохранить или обновить пользователя
  * - delete(user) - Удалить пользователя
- * - findById(id) - Найти по ID
+ * - findById(userId) - Найти по ID
  * - findByPhone(phone) - Найти по телефону (уникален)
  * - findByEmail(email) - Найти по email
  * - findByRole(role) - Найти первого пользователя с ролью
- * - findByFacilityId(id) - Найти по объекту (склад, ПВЗ)
+ * - findByFacilityId(userId) - Найти по объекту (склад, ПВЗ)
  *
  * @see UserPersistenceAdapter для реализации на JPA
  * @see User для доменной сущности
@@ -9537,33 +9660,145 @@ public class UpdateUserInfoService implements UpdateUserInfoUseCase {
         user.setLastName(command.lastName());
         user.setMiddleName(command.middleName());
 
-        if (command.newPassword() != null && !command.newPassword().isBlank()) {
-
-            if (command.oldPassword() == null || command.oldPassword().isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oldPassword is required");
-            }
-
-            if (!passwordEncoder.matches(command.oldPassword(), user.getPasswordHash())) {
-                throw new BadCredentialsException("Invalid credentials");
-            }
-
-            user.setPasswordHash(passwordEncoder.encode(command.newPassword()));
-        }
-
-        if (command.phone() != null && !command.phone().isBlank()
-                && !command.phone().equals(user.getPhone())) {
-
-            if (!smsRepository.isPhoneVerified(command.phone())) {
-                throw new PhoneNotVerifiedException("Phone is not verified");
-            }
-
-            user.setPhone(command.phone());
-
-            smsRepository.deleteVerificationStatus(command.phone());
-        }
 
         var saved = userRepository.save(user);
 
+        return UserControllerMapper.toResponse(saved);
+    }
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/usecase/UpdateUserPasswordService.java
+================================================================================
+package com.logistics.userauth.user.application.usecase;
+
+import com.logistics.userauth.user.application.port.in.UpdateUserPasswordUseCase;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPasswordCommand;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@RequiredArgsConstructor
+public class UpdateUserPasswordService implements UpdateUserPasswordUseCase {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    public void update(UpdateUserPasswordCommand command) {
+        var user = userRepository.findById(command.userId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (command.oldPassword() == null || command.oldPassword().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Введите старый пароль");
+        }
+
+        if (command.newPassword() == null || command.newPassword().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Введите новый пароль");
+        }
+
+        if (!passwordEncoder.matches(command.oldPassword(), user.getPasswordHash())) {
+            throw new BadCredentialsException("Неверный старый пароль");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(command.newPassword()));
+        userRepository.save(user);
+    }
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/usecase/UpdateUserPersonalInfoService.java
+================================================================================
+package com.logistics.userauth.user.application.usecase;
+
+import com.logistics.userauth.user.adapter.in.UserControllerMapper;
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
+import com.logistics.userauth.user.application.port.in.UpdateUserPersonalInfoUseCase;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPersonalInfoCommand;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@RequiredArgsConstructor
+public class UpdateUserPersonalInfoService implements UpdateUserPersonalInfoUseCase {
+
+    private final UserRepository userRepository;
+
+    @Override
+    public UserInfoResponse update(UpdateUserPersonalInfoCommand command) {
+
+        var user = userRepository.findById(command.userId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        user.setEmail(command.email());
+        user.setFirstName(command.firstName());
+        user.setLastName(command.lastName());
+        user.setMiddleName(command.middleName());
+
+        var saved = userRepository.save(user);
+
+        return UserControllerMapper.toResponse(saved);
+    }
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/user/application/usecase/UpdateUserPhoneService.java
+================================================================================
+package com.logistics.userauth.user.application.usecase;
+
+import com.logistics.shared.utils.PhoneUtils;
+import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
+import com.logistics.userauth.sms.application.port.out.SmsRepository;
+import com.logistics.userauth.user.adapter.in.UserControllerMapper;
+import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
+import com.logistics.userauth.user.application.port.in.UpdateUserPhoneUseCase;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPhoneCommand;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+@RequiredArgsConstructor
+public class UpdateUserPhoneService implements UpdateUserPhoneUseCase {
+
+    private final UserRepository userRepository;
+    private final SmsRepository smsRepository;
+
+    @Override
+    public UserInfoResponse update(UpdateUserPhoneCommand command) {
+        var user = userRepository.findById(command.userId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        var normalizedPhone = PhoneUtils.normalize(command.phone());
+        if (normalizedPhone == null || normalizedPhone.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Phone is required");
+        }
+
+        if (normalizedPhone.equals(user.getPhone())) {
+            return UserControllerMapper.toResponse(user);
+        }
+
+        if (!smsRepository.isPhoneVerified(normalizedPhone)) {
+            throw new PhoneNotVerifiedException("Phone is not verified");
+        }
+
+        user.setPhone(normalizedPhone);
+        smsRepository.deleteVerificationStatus(normalizedPhone);
+
+        var saved = userRepository.save(user);
         return UserControllerMapper.toResponse(saved);
     }
 }
@@ -12699,7 +12934,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logistics.userauth.IntegrationTest;
 import com.logistics.userauth.common.web.GlobalExceptionHandler;
 import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
-import com.logistics.userauth.user.adapter.in.web.dto.UserUpdateRequest;
+import com.logistics.userauth.user.adapter.in.web.dto.UserPhoneUpdateRequest;
 import com.logistics.userauth.user.application.port.in.GetUserInfoUseCase;
 import com.logistics.userauth.user.application.port.in.UpdateUserInfoUseCase;
 import com.logistics.userauth.user.application.port.in.command.GetUserInfoCommand;
@@ -12723,11 +12958,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @IntegrationTest
-@AutoConfigureMockMvc(addFilters = false) // аутентификацию прокидываем через request.principal(...)
+@AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
 @DisplayName("UserController - интеграционный тест")
 class UserControllerIntegrationTest {
@@ -12791,10 +13026,10 @@ class UserControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /users/me: обновляет профиль и возвращает обновлённые данные")
+    @DisplayName("PUT /users/me: обновляет профиль и возвращает обновлённые данные")
     void shouldUpdateUserInfo() throws Exception {
         // Given
-        var request = new UserUpdateRequest(
+        var request = new UserPhoneUpdateRequest(
                 "new@mail.com",
                 "89990000000",
                 "New",
@@ -12815,7 +13050,7 @@ class UserControllerIntegrationTest {
         when(updateUserInfoUseCase.update(any(UpdateUserInfoCommand.class))).thenReturn(expected);
 
         // When / Then
-        mockMvc.perform(post(ME_URL)
+        mockMvc.perform(put(ME_URL)
                         .principal(authenticationWithUserId(7L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -12839,10 +13074,10 @@ class UserControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /users/me: возвращает 400 при невалидном email (валидация DTO)")
+    @DisplayName("PUT /users/me: возвращает 400 при невалидном email (валидация DTO)")
     void shouldReturn400ForInvalidEmail() throws Exception {
         // Given
-        var request = new UserUpdateRequest(
+        var request = new UserPhoneUpdateRequest(
                 "not-an-email",
                 "79990000000",
                 "New",
@@ -12853,7 +13088,7 @@ class UserControllerIntegrationTest {
         );
 
         // When / Then
-        mockMvc.perform(post(ME_URL)
+        mockMvc.perform(put(ME_URL)
                         .principal(authenticationWithUserId(7L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -12865,10 +13100,10 @@ class UserControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /users/me: возвращает 401, если пользователь не аутентифицирован")
+    @DisplayName("PUT /users/me: возвращает 401, если пользователь не аутентифицирован")
     void shouldReturn401WhenNoAuthentication() throws Exception {
         // Given
-        var request = new UserUpdateRequest(
+        var request = new UserPhoneUpdateRequest(
                 "a@b.com",
                 "89990000000",
                 "A",
@@ -12880,7 +13115,7 @@ class UserControllerIntegrationTest {
 
 
         // When / Then
-        mockMvc.perform(post(ME_URL)
+        mockMvc.perform(put(ME_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
@@ -31754,15 +31989,13 @@ export default function RegisterPage() {
 import { http } from "../../../shared/http/http";
 
 export const userApi = {
-    // GET /users/me
     getProfile() {
         return http("/users/me", {
             method: "GET",
-            withAuth: true, // Нужен токен
+            withAuth: true,
         });
     },
 
-    // PUT /users/me (обновление данных и телефона, если бэк позволяет)
     updateProfile(body) {
         return http("/users/me", {
             method: "PUT",
@@ -31771,16 +32004,29 @@ export const userApi = {
         });
     },
 
-    // POST /users/me/password (или как у вас на бэке реализована смена пароля)
-    // Если отдельного эндпоинта нет, удалите этот метод и используйте updateProfile
     updatePassword(body) {
-        // Пример (уточните свой путь в Swagger/документации):
         return http("/users/me/password", {
-            method: "POST", // или PUT
+            method: "PUT",
             body,
             withAuth: true,
         });
-    }
+    },
+
+    updatePersonalInfo(body) {
+        return http("/users/me/personal", {
+            method: "PATCH",          // важно: PATCH, как на бэке
+            body,                     // { firstName, lastName, middleName, email }
+            withAuth: true,
+        });
+    },
+
+    updatePhone(body) {
+        return http("/users/me/phone", {
+            method: "PUT",
+            body,
+            withAuth: true,
+        });
+    },
 };
 
 
@@ -31884,8 +32130,7 @@ export default function ChangePhoneSection({ currentPhone, onPhoneUpdated }) {
         setError(null);
         setLoading(true);
         try {
-            // Отправляем номер "как есть", бэкенд сам нормализует
-            await smsApi.sendCode({ phone: newPhone });
+            await smsApi.sendCode(newPhone);  // ✅ Исправлено
             setStep('verify');
         } catch (err) {
             console.error(err);
@@ -31895,23 +32140,18 @@ export default function ChangePhoneSection({ currentPhone, onPhoneUpdated }) {
         }
     };
 
-    // 2. Проверка кода и сохранение нового номера
+// 2. Проверка кода и сохранение нового номера
     const handleVerifyAndSave = async () => {
         if (!code) return;
 
         setError(null);
         setLoading(true);
         try {
-            // Сначала проверяем код (верифицируем телефон на бэкенде)
-            await smsApi.verifyCode({ phone: newPhone, code });
+            await smsApi.verifyCode(newPhone, code);
 
-            // Затем обновляем профиль. Бэкенд должен позволить это сделать,
-            // так как номер только что был верифицирован.
-            await userApi.updateProfile({ phone: newPhone });
+            const updatedUser = await userApi.updatePhone({ phone: newPhone });
 
-            // Уведомляем родительский компонент об обновлении
-            onPhoneUpdated(newPhone);
-
+            onPhoneUpdated(updatedUser);
             setIsEditing(false);
             alert('Телефон успешно изменен!');
         } catch (err) {
@@ -31921,6 +32161,7 @@ export default function ChangePhoneSection({ currentPhone, onPhoneUpdated }) {
             setLoading(false);
         }
     };
+
 
     if (!isEditing) {
         return (
@@ -32022,7 +32263,7 @@ export default function PersonalInfoSection({ user, onUpdate }) {
         e.preventDefault();
         setLoading(true);
         try {
-            const updatedUser = await userApi.updateProfile(form);
+            const updatedUser = await userApi.updatePersonalInfo(form);
             onUpdate(updatedUser);
             alert('Данные сохранены');
         } catch (err) {
@@ -32222,8 +32463,8 @@ export default function ProfilePage() {
 
             {/* 1. Секция телефона */}
             <ChangePhoneSection
-                currentPhone={user.phone}
-                onPhoneUpdated={(phone) => handleUserUpdate({ phone })}
+                currentPhone={user?.phone}
+                onPhoneUpdated={handleUserUpdate}
             />
 
             <hr className="divider" />

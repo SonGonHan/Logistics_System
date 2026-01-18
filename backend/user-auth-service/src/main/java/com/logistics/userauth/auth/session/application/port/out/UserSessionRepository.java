@@ -21,7 +21,7 @@ import java.util.Optional;
  * <h2>Методы</h2>
  * - save(userSession) - Сохранить или обновить сессию
  * - delete(userSession) - Удалить сессию
- * - findById(id) - Найти по ID
+ * - findById(userId) - Найти по ID
  * - findByUser(user) - Найти по пользователю
  * - findByRefreshToken(refreshToken) - Найти по refresh-токену
  *

@@ -1,13 +1,12 @@
 package com.logistics.userauth.user.adapter.in.web;
 
 import com.logistics.userauth.common.api.GetInfoOperation;
-import com.logistics.userauth.common.api.UpdateInfoOperation;
 import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
-import com.logistics.userauth.user.adapter.in.web.dto.UserUpdateRequest;
-import com.logistics.userauth.user.application.port.in.GetUserInfoUseCase;
-import com.logistics.userauth.user.application.port.in.UpdateUserInfoUseCase;
-import com.logistics.userauth.user.application.port.in.command.GetUserInfoCommand;
-import com.logistics.userauth.user.application.port.in.command.UpdateUserInfoCommand;
+import com.logistics.userauth.user.adapter.in.web.dto.UserPasswordUpdateRequest;
+import com.logistics.userauth.user.adapter.in.web.dto.UserPersonalDataUpdateRequest;
+import com.logistics.userauth.user.adapter.in.web.dto.UserPhoneUpdateRequest;
+import com.logistics.userauth.user.application.port.in.*;
+import com.logistics.userauth.user.application.port.in.command.*;
 import com.logistics.userauth.user.infrastructure.LogisticsUserDetails;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -43,7 +42,9 @@ import org.springframework.web.server.ResponseStatusException;
 public class UserController {
 
     private final GetUserInfoUseCase getUserInfoUseCase;
-    private final UpdateUserInfoUseCase updateUserInfoUseCase;
+    private final UpdateUserPhoneUseCase updateUserPhoneUseCase;
+    private final UpdateUserPasswordUseCase updateUserPasswordUseCase;
+    private final UpdateUserPersonalInfoUseCase updateUserPersonalInfoUseCase;
 
     /**
      * Возвращает информацию о текущем пользователе.
@@ -60,40 +61,68 @@ public class UserController {
         return ResponseEntity.ok(getUserInfoUseCase.getUserInfo(command));
     }
 
-    /**
-     * Обновляет данные профиля текущего пользователя.
-     *
-     * <p>Дополнительно поддерживает смену пароля: если передан {@code newPassword},
-     * то требуется {@code oldPassword} и выполняется проверка через {@code PasswordEncoder.matches}.
-     *
-     * @param authentication контекст аутентификации; если отсутствует — запрос считается неаутентифицированным.
-     * @param request входной DTO для обновления профиля (валидируется через Bean Validation).
-     * @return HTTP 200 с обновлёнными данными пользователя ({@link com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse}).
-     * @throws org.springframework.web.server.ResponseStatusException со статусом 401, если пользователь не аутентифицирован.
-     */
-    @PutMapping("/me")
-    @UpdateInfoOperation
-    public ResponseEntity<UserInfoResponse> updateInfo(
+    @PutMapping("/me/phone")
+    public ResponseEntity<UserInfoResponse> updatePhone(
             Authentication authentication,
-            @Valid @RequestBody UserUpdateRequest request
+            @Valid @RequestBody UserPhoneUpdateRequest request
     ) {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
         }
 
-        Long userId = ((LogisticsUserDetails) authentication.getPrincipal()).getId();
+        var userId = ((LogisticsUserDetails) authentication.getPrincipal()).getId();
 
-        var command = UpdateUserInfoCommand.builder()
+        var command = UpdateUserPhoneCommand.builder()
                 .userId(userId)
-                .email(request.email())
                 .phone(request.phone())
+                .build();
+
+        return ResponseEntity.ok(updateUserPhoneUseCase.update(command));
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> updatePassword(
+            Authentication authentication,
+            @Valid @RequestBody UserPasswordUpdateRequest request
+    ) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
+        var userId = ((LogisticsUserDetails) authentication.getPrincipal()).getId();
+
+        var command = UpdateUserPasswordCommand.builder()
+                .userId(userId)
+                .oldPassword(request.oldPassword())
+                .newPassword(request.newPassword())
+                .build();
+
+        updateUserPasswordUseCase.update(command);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/me/personal")
+    public ResponseEntity<UserInfoResponse> updatePersonalInfo(
+            Authentication authentication,
+            @Valid @RequestBody UserPersonalDataUpdateRequest request
+    ) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
+        }
+
+        var userId = ((LogisticsUserDetails) authentication.getPrincipal()).getId();
+
+        var command = UpdateUserPersonalInfoCommand.builder()
+                .userId(userId)
                 .firstName(request.firstName())
                 .lastName(request.lastName())
                 .middleName(request.middleName())
-                .newPassword(request.newPassword())
-                .oldPassword(request.oldPassword())
+                .email(request.email())
                 .build();
-        return ResponseEntity.ok(updateUserInfoUseCase.update(command));
+
+        return ResponseEntity.ok(updateUserPersonalInfoUseCase.update(command));
     }
+
 
 }

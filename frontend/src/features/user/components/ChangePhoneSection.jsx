@@ -51,9 +51,9 @@ export default function ChangePhoneSection({ currentPhone, onPhoneUpdated }) {
         try {
             await smsApi.verifyCode(newPhone, code);
 
-            await userApi.updateProfile({ phone: newPhone });
+            const updatedUser = await userApi.updatePhone({ phone: newPhone });
 
-            onPhoneUpdated(newPhone);
+            onPhoneUpdated(updatedUser);
             setIsEditing(false);
             alert('Телефон успешно изменен!');
         } catch (err) {

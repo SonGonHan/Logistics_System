@@ -51,30 +51,6 @@ public class UpdateUserInfoService implements UpdateUserInfoUseCase {
         user.setLastName(command.lastName());
         user.setMiddleName(command.middleName());
 
-        if (command.newPassword() != null && !command.newPassword().isBlank()) {
-
-            if (command.oldPassword() == null || command.oldPassword().isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "oldPassword is required");
-            }
-
-            if (!passwordEncoder.matches(command.oldPassword(), user.getPasswordHash())) {
-                throw new BadCredentialsException("Invalid credentials");
-            }
-
-            user.setPasswordHash(passwordEncoder.encode(command.newPassword()));
-        }
-
-        if (command.phone() != null && !command.phone().isBlank()
-                && !command.phone().equals(user.getPhone())) {
-
-            if (!smsRepository.isPhoneVerified(command.phone())) {
-                throw new PhoneNotVerifiedException("Phone is not verified");
-            }
-
-            user.setPhone(command.phone());
-
-            smsRepository.deleteVerificationStatus(command.phone());
-        }
 
         var saved = userRepository.save(user);
 

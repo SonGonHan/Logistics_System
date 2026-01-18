@@ -18,30 +18,34 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Глобальный обработчик исключений для всех REST endpoints.
+ * Глобальный обработчик исключений для REST endpoints.
  *
- * <h2>Назначение</h2>
- * Перехватывает исключения и возвращает единообразный JSON формат ошибок.
+ * <h2>Обработка исключений</h2>
+ * Возвращает JSON с детализацией ошибки.
  *
- * <h2>Обработанные исключения</h2>
- * - BadCredentialsException → 401 INVALID_CREDENTIALS
- * - DataIntegrityViolationException → 409 CONFLICT
- * - MethodArgumentNotValidException → 400 VALIDATION_FAILED
- * - InvalidRefreshTokenException → 401 INVALID_REFRESH_TOKEN
- * - Все остальные Exception → 500 INTERNAL_SERVER_ERROR
+ * <h2>Типы исключений</h2>
+ * <ul>
+ *   <li>BadCredentialsException → 401 (INVALID_CREDENTIALS)</li>
+ *   <li>DataIntegrityViolationException → 409 (CONFLICT)</li>
+ *   <li>MethodArgumentNotValidException → 400 (VALIDATION_FAILED)</li>
+ *   <li>InvalidRefreshTokenException → 401 (INVALID_REFRESH_TOKEN)</li>
+ *   <li>Exception → 500 (INTERNAL_SERVER_ERROR)</li>
+ * </ul>
  *
  * <h2>Формат ответа</h2>
+ * <pre>
  * {
- *   \"error\": \"ERROR_CODE\",
- *   \"message\": \"Human-readable message\",
- *   \"fields\": { \"fieldName\": \"error message\" }  // только для VALIDATION_FAILED
+ *   "error": "ERROR_CODE",
+ *   "message": "Human-readable message",
+ *   "fields": { "fieldName": "error message" } // только для VALIDATION_FAILED
  * }
+ * </pre>
  */
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
     /**
-     * Обработка ошибок аутентификации (неверные учетные данные).
+     * Обработка ошибок аутентификации.
      *
      * @param ex BadCredentialsException
      * @return ResponseEntity с кодом 401
@@ -50,12 +54,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "INVALID_CREDENTIALS");
-        body.put("message", "Неверный телефон или пароль");
+        body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
     /**
-     * Обработка ошибок целостности данных (duplicate keys, constraint violations).
+     * Обработка нарушения ограничений БД (duplicate keys, constraint violations).
      *
      * @param ex DataIntegrityViolationException
      * @return ResponseEntity с кодом 409
@@ -64,15 +68,26 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "CONFLICT");
-        body.put("message", "Пользователь с таким телефоном или email уже существует");
+
+        // Извлекаем более детальное сообщение, если возможно
+        String message = "Нарушение уникальности данных";
+        if (ex.getMessage() != null) {
+            if (ex.getMessage().contains("email")) {
+                message = "Пользователь с таким email уже существует";
+            } else if (ex.getMessage().contains("phone")) {
+                message = "Пользователь с таким телефоном уже существует";
+            }
+        }
+
+        body.put("message", message);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     /**
-     * Обработка ошибок валидации входных параметров.
+     * Обработка ошибок валидации Bean Validation.
      *
      * @param ex MethodArgumentNotValidException
-     * @return ResponseEntity с кодом 400 и деталями ошибок по полям
+     * @return ResponseEntity с кодом 400
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
@@ -84,11 +99,12 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "VALIDATION_FAILED");
         body.put("fields", fieldErrors);
+
         return ResponseEntity.badRequest().body(body);
     }
 
     /**
-     * Обработка ошибок невалидного refresh token.
+     * Обработка невалидного refresh token.
      *
      * @param ex InvalidRefreshTokenException
      * @return ResponseEntity с кодом 401
@@ -108,9 +124,7 @@ public class GlobalExceptionHandler {
      * @return ResponseEntity с кодом 429
      */
     @ExceptionHandler(RateLimitExceededException.class)
-    public ResponseEntity<Map<String, Object>> handleRateLimitExceeded(
-            RateLimitExceededException ex
-    ) {
+    public ResponseEntity<Map<String, Object>> handleRateLimitExceeded(RateLimitExceededException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "RATE_LIMIT_EXCEEDED");
         body.put("message", ex.getMessage());
@@ -118,15 +132,13 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Обработка ошибки доставки SMS.
+     * Обработка ошибок отправки SMS.
      *
      * @param ex SmsDeliveryException
      * @return ResponseEntity с кодом 503
      */
     @ExceptionHandler(SmsDeliveryException.class)
-    public ResponseEntity<Map<String, Object>> handleSmsDeliveryError(
-            SmsDeliveryException ex
-    ) {
+    public ResponseEntity<Map<String, Object>> handleSmsDeliveryError(SmsDeliveryException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "SMS_DELIVERY_FAILED");
         body.put("message", ex.getMessage());
@@ -134,36 +146,30 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Обработка ошибок невалидного кода верификации.
+     * Обработка неверного кода верификации.
      *
      * @param ex InvalidVerificationCodeException
      * @return ResponseEntity с кодом 400
      */
     @ExceptionHandler(InvalidVerificationCodeException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidVerificationCode(
-            InvalidVerificationCodeException ex
-    ) {
+    public ResponseEntity<Map<String, Object>> handleInvalidVerificationCode(InvalidVerificationCodeException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "INVALID_VERIFICATION_CODE");
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-
     /**
-     * Обработка ошибки верификации телефона.
+     * Обработка ошибки неподтверждённого телефона.
      *
      * @param ex PhoneNotVerifiedException
      * @return ResponseEntity с кодом 400
      */
     @ExceptionHandler(PhoneNotVerifiedException.class)
-    public ResponseEntity<Map<String, Object>> handlePhoneNotVerified(
-            PhoneNotVerifiedException ex
-    ) {
+    public ResponseEntity<Map<String, Object>> handlePhoneNotVerified(PhoneNotVerifiedException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "PHONE_NOT_VERIFIED");
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
-
 }

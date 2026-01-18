@@ -38,8 +38,8 @@ export default function ProfilePage() {
 
             {/* 1. Секция телефона */}
             <ChangePhoneSection
-                currentPhone={user.phone}
-                onPhoneUpdated={(phone) => handleUserUpdate({ phone })}
+                currentPhone={user?.phone}
+                onPhoneUpdated={handleUserUpdate}
             />
 
             <hr className="divider" />
