@@ -65,7 +65,7 @@ app:
       code-length: 6
       code-ttl-minutes: 5
       max-attempts: 1 # Максимум попыток ввода кода
-      resend-cooldown-seconds: 30  # Задержка перед повторной отправкой
+      resend-cooldown-seconds: 5 # Задержка перед повторной отправкой
       verified-status-ttl-minutes: 5
 
 

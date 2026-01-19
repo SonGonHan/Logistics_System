@@ -2,16 +2,15 @@ import { http } from "../../../shared/http/http";
 import { config } from "../../../shared/config";
 
 export const smsApi = {
-    sendCode(phone) {
-        return http(config.sms.sendCodePath, {
-            method: "POST",
-            body: { phone },
+    getSmsConfig() {
+        return http(config.sms.configPath, {
+            method: "GET",
             withAuth: false,
         });
     },
 
-    resendCode(phone) {
-        return http(config.sms.resendCodePath, {
+    sendCode(phone) {
+        return http(config.sms.sendCodePath, {
             method: "POST",
             body: { phone },
             withAuth: false,

@@ -61,15 +61,36 @@
 .btn-text {
     width: auto;
     background: none;
-    color: #6b7280;
+    color: #2563eb;
     padding: 8px;
     text-decoration: underline;
     font-size: 14px;
+
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
 }
 
-.btn-text:hover {
-    color: #111827;
-    background: none;
+/* Наведение: белый текст на синем фоне */
+.btn-text:hover:not(:disabled) {
+    background: #2563eb;
+    color: #ffffff;
+    text-decoration: none; /* можно убрать, чтобы выглядело как кнопка */
+}
+
+/* Нажатие (опционально, чуть темнее) */
+.btn-text:active:not(:disabled) {
+    background: #1d4ed8;
+    color: #ffffff;
+}
+
+/* Фокус с клавиатуры (Tab): тоже белый на синем */
+.btn-text:focus-visible:not(:disabled) {
+    background: #2563eb;
+    color: #ffffff;
+    text-decoration: none;
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
 }
 
 /* Блок действий (кнопки рядом в смене телефона) */

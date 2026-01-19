@@ -1,5 +1,5 @@
 === Проект: . ===
-Всего файлов: 285
+Всего файлов: 288
 ================================================================================
 
 ================================================================================
@@ -4907,10 +4907,10 @@ public class AuthenticateUserService implements AuthenticateUserUseCase {
         var normalizedPhone = PhoneUtils.normalize(command.phone());
 
         var user = userRepository.findByPhone(normalizedPhone)
-                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+                .orElseThrow(() -> new BadCredentialsException("Неверный телефон или пароль"));
 
         if (!passwordEncoder.matches(command.password(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid credentials");
+            throw new BadCredentialsException("Неверный телефон или пароль");
         }
 
         var accessToken = tokenGenerator.generateAccessToken(user);
@@ -6594,30 +6594,34 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Глобальный обработчик исключений для всех REST endpoints.
+ * Глобальный обработчик исключений для REST endpoints.
  *
- * <h2>Назначение</h2>
- * Перехватывает исключения и возвращает единообразный JSON формат ошибок.
+ * <h2>Обработка исключений</h2>
+ * Возвращает JSON с детализацией ошибки.
  *
- * <h2>Обработанные исключения</h2>
- * - BadCredentialsException → 401 INVALID_CREDENTIALS
- * - DataIntegrityViolationException → 409 CONFLICT
- * - MethodArgumentNotValidException → 400 VALIDATION_FAILED
- * - InvalidRefreshTokenException → 401 INVALID_REFRESH_TOKEN
- * - Все остальные Exception → 500 INTERNAL_SERVER_ERROR
+ * <h2>Типы исключений</h2>
+ * <ul>
+ *   <li>BadCredentialsException → 401 (INVALID_CREDENTIALS)</li>
+ *   <li>DataIntegrityViolationException → 409 (CONFLICT)</li>
+ *   <li>MethodArgumentNotValidException → 400 (VALIDATION_FAILED)</li>
+ *   <li>InvalidRefreshTokenException → 401 (INVALID_REFRESH_TOKEN)</li>
+ *   <li>Exception → 500 (INTERNAL_SERVER_ERROR)</li>
+ * </ul>
  *
  * <h2>Формат ответа</h2>
+ * <pre>
  * {
- *   \"error\": \"ERROR_CODE\",
- *   \"message\": \"Human-readable message\",
- *   \"fields\": { \"fieldName\": \"error message\" }  // только для VALIDATION_FAILED
+ *   "error": "ERROR_CODE",
+ *   "message": "Human-readable message",
+ *   "fields": { "fieldName": "error message" } // только для VALIDATION_FAILED
  * }
+ * </pre>
  */
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
     /**
-     * Обработка ошибок аутентификации (неверные учетные данные).
+     * Обработка ошибок аутентификации.
      *
      * @param ex BadCredentialsException
      * @return ResponseEntity с кодом 401
@@ -6626,12 +6630,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "INVALID_CREDENTIALS");
-        body.put("message", "Неверный телефон или пароль");
+        body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
     /**
-     * Обработка ошибок целостности данных (duplicate keys, constraint violations).
+     * Обработка нарушения ограничений БД (duplicate keys, constraint violations).
      *
      * @param ex DataIntegrityViolationException
      * @return ResponseEntity с кодом 409
@@ -6640,15 +6644,26 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "CONFLICT");
-        body.put("message", "Пользователь с таким телефоном или email уже существует");
+
+        // Извлекаем более детальное сообщение, если возможно
+        String message = "Нарушение уникальности данных";
+        if (ex.getMessage() != null) {
+            if (ex.getMessage().contains("email")) {
+                message = "Пользователь с таким email уже существует";
+            } else if (ex.getMessage().contains("phone")) {
+                message = "Пользователь с таким телефоном уже существует";
+            }
+        }
+
+        body.put("message", message);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     /**
-     * Обработка ошибок валидации входных параметров.
+     * Обработка ошибок валидации Bean Validation.
      *
      * @param ex MethodArgumentNotValidException
-     * @return ResponseEntity с кодом 400 и деталями ошибок по полям
+     * @return ResponseEntity с кодом 400
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
@@ -6660,11 +6675,12 @@ public class GlobalExceptionHandler {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "VALIDATION_FAILED");
         body.put("fields", fieldErrors);
+
         return ResponseEntity.badRequest().body(body);
     }
 
     /**
-     * Обработка ошибок невалидного refresh token.
+     * Обработка невалидного refresh token.
      *
      * @param ex InvalidRefreshTokenException
      * @return ResponseEntity с кодом 401
@@ -6684,9 +6700,7 @@ public class GlobalExceptionHandler {
      * @return ResponseEntity с кодом 429
      */
     @ExceptionHandler(RateLimitExceededException.class)
-    public ResponseEntity<Map<String, Object>> handleRateLimitExceeded(
-            RateLimitExceededException ex
-    ) {
+    public ResponseEntity<Map<String, Object>> handleRateLimitExceeded(RateLimitExceededException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "RATE_LIMIT_EXCEEDED");
         body.put("message", ex.getMessage());
@@ -6694,15 +6708,13 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Обработка ошибки доставки SMS.
+     * Обработка ошибок отправки SMS.
      *
      * @param ex SmsDeliveryException
      * @return ResponseEntity с кодом 503
      */
     @ExceptionHandler(SmsDeliveryException.class)
-    public ResponseEntity<Map<String, Object>> handleSmsDeliveryError(
-            SmsDeliveryException ex
-    ) {
+    public ResponseEntity<Map<String, Object>> handleSmsDeliveryError(SmsDeliveryException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "SMS_DELIVERY_FAILED");
         body.put("message", ex.getMessage());
@@ -6710,38 +6722,32 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Обработка ошибок невалидного кода верификации.
+     * Обработка неверного кода верификации.
      *
      * @param ex InvalidVerificationCodeException
      * @return ResponseEntity с кодом 400
      */
     @ExceptionHandler(InvalidVerificationCodeException.class)
-    public ResponseEntity<Map<String, Object>> handleInvalidVerificationCode(
-            InvalidVerificationCodeException ex
-    ) {
+    public ResponseEntity<Map<String, Object>> handleInvalidVerificationCode(InvalidVerificationCodeException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "INVALID_VERIFICATION_CODE");
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-
     /**
-     * Обработка ошибки верификации телефона.
+     * Обработка ошибки неподтверждённого телефона.
      *
      * @param ex PhoneNotVerifiedException
      * @return ResponseEntity с кодом 400
      */
     @ExceptionHandler(PhoneNotVerifiedException.class)
-    public ResponseEntity<Map<String, Object>> handlePhoneNotVerified(
-            PhoneNotVerifiedException ex
-    ) {
+    public ResponseEntity<Map<String, Object>> handlePhoneNotVerified(PhoneNotVerifiedException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "PHONE_NOT_VERIFIED");
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
-
 }
 
 
@@ -6977,6 +6983,7 @@ package com.logistics.userauth.sms.adapter.in.web;
 import com.logistics.userauth.common.api.SendVerificationCodeOperation;
 import com.logistics.userauth.common.api.VerifyPhoneOperation;
 import com.logistics.userauth.sms.adapter.in.web.dto.SendVerificationCodeRequest;
+import com.logistics.userauth.sms.adapter.in.web.dto.SmsConfigResponse;
 import com.logistics.userauth.sms.adapter.in.web.dto.VerifyPhoneRequest;
 import com.logistics.userauth.sms.adapter.in.web.dto.VerifyPhoneResponse;
 import com.logistics.userauth.sms.application.port.in.SendVerificationCodeUseCase;
@@ -6987,11 +6994,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * REST контроллер для SMS верификации.
@@ -7029,6 +7034,15 @@ public class SmsController {
 
     private final SendVerificationCodeUseCase sendVerificationCodeUseCase;
     private final VerifyPhoneUseCase verifyPhoneUseCase;
+
+    @Value("${app.sms.verification.resend-cooldown-seconds}")
+    private long resendCooldownSeconds;
+
+    @GetMapping("/config")
+    public ResponseEntity<SmsConfigResponse> getSmsConfig() {
+        var conf = new SmsConfigResponse(resendCooldownSeconds);
+        return ResponseEntity.ok(conf);
+    }
 
     /**
      * POST /api/v1/sms/send-verification-code — запускает отправку SMS кода на телефон.
@@ -7112,6 +7126,17 @@ public record SendVerificationCodeRequest(
         @Phone
         String phone
 ) {}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/main/java/com/logistics/userauth/sms/adapter/in/web/dto/SmsConfigResponse.java
+================================================================================
+package com.logistics.userauth.sms.adapter.in.web.dto;
+
+public record SmsConfigResponse(
+        Long resendCooldownSeconds
+) {
+}
 
 
 ================================================================================
@@ -7636,7 +7661,7 @@ package com.logistics.userauth.sms.application.exception;
  *
  * <h2>Когда выбрасывается</h2>
  * <ul>
- *   <li>Повторная отправка кода раньше, чем через 60 секунд</li>
+ *   <li>Повторная отправка кода раньше, чем через установленное время</li>
  *   <li>Превышение дневного лимита отправок с одного IP</li>
  * </ul>
  *
@@ -10295,7 +10320,7 @@ app:
       code-length: 6
       code-ttl-minutes: 5
       max-attempts: 1 # Максимум попыток ввода кода
-      resend-cooldown-seconds: 30  # Задержка перед повторной отправкой
+      resend-cooldown-seconds: 5 # Задержка перед повторной отправкой
       verified-status-ttl-minutes: 5
 
 
@@ -10617,6 +10642,7 @@ class AuditLogPersistenceMapperTest {
 package com.logistics.userauth.auth.jwt.adapter.in.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.logistics.shared.utils.PhoneUtils;
 import com.logistics.userauth.IntegrationTest;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.RefreshTokenRequest;
 import com.logistics.userauth.sms.application.port.out.SendSmsPort;
@@ -10668,9 +10694,9 @@ class AuthControllerIntegrationTest {
     @DisplayName("Должен успешно зарегистрировать пользователя и вернуть JWT токены")
     void shouldRegisterUserAndReturnTokens() throws Exception {
         // Given - верифицируем телефон
-        String phone = "+79991111111";  // ← ИСПРАВИЛ: правильный формат!
-
-        smsRepository.markPhoneAsVerified(phone, 10L);
+        String phone = "+79991111111";
+        String normalizedPhone = PhoneUtils.normalize(phone);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         // When
         var signUpRequest = new SignUpRequest(
@@ -10686,7 +10712,7 @@ class AuthControllerIntegrationTest {
         mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(signUpRequest)))
-                .andDo(print())  // ← Для отладки
+                .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accessToken").value(notNullValue()))
                 .andExpect(jsonPath("$.refreshToken").value(notNullValue()));
@@ -10698,7 +10724,7 @@ class AuthControllerIntegrationTest {
         // Given
         var signUpRequest = new SignUpRequest(
                 "notverified@example.com",
-                "+79992222222",  // ← ИСПРАВИЛ: правильный формат!
+                "+79992222222",
                 "Password123!",
                 "Jane",
                 "Doe",
@@ -10718,11 +10744,12 @@ class AuthControllerIntegrationTest {
     @DisplayName("Должен аутентифицировать пользователя и вернуть токены")
     void shouldAuthenticateUserAndReturnTokens() throws Exception {
         // Given - регистрируем пользователя
-        String phone = "+79997654321";  // ← ИСПРАВИЛ: правильный формат!
+        String phone = "+79997654321";
+        String normalizedPhone = PhoneUtils.normalize(phone);
         String password = "Password123!";
 
         // Верифицируем телефон
-        smsRepository.markPhoneAsVerified(phone, 10L);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "login@example.com",
@@ -10734,8 +10761,9 @@ class AuthControllerIntegrationTest {
         );
 
         mockMvc.perform(post("/auth/register")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(signUpRequest)));
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(signUpRequest)))
+                .andExpect(status().isCreated());
 
         // When - логинимся
         var signInRequest = new SignInRequest(phone, null, password);
@@ -10754,9 +10782,9 @@ class AuthControllerIntegrationTest {
     @DisplayName("Должен обновить access token используя refresh token")
     void shouldRefreshAccessToken() throws Exception {
         // Given - регистрируем пользователя
-        String phone = "+79995555555";  // ← ИСПРАВИЛ: правильный формат!
-
-        smsRepository.markPhoneAsVerified(phone, 10L);
+        String phone = "+79995555555";
+        String normalizedPhone = PhoneUtils.normalize(phone);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "refresh@example.com",
@@ -10770,13 +10798,12 @@ class AuthControllerIntegrationTest {
         MvcResult registerResult = mockMvc.perform(post("/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(signUpRequest)))
-                .andExpect(status().isCreated())  // ← ПРОВЕРЯЕМ статус сразу!
+                .andExpect(status().isCreated())
                 .andReturn();
 
         String responseBody = registerResult.getResponse().getContentAsString();
         var authResponse = objectMapper.readTree(responseBody);
 
-        // ← ПРОВЕРКА на null!
         if (authResponse.get("refreshToken") == null) {
             throw new AssertionError("refreshToken не найден в ответе: " + responseBody);
         }
@@ -10800,9 +10827,9 @@ class AuthControllerIntegrationTest {
     @DisplayName("Должен успешно выполнить logout и отозвать refresh token")
     void shouldRevokeRefreshTokenOnLogout() throws Exception {
         // Given - регистрируем пользователя
-        String phone = "+79996666666";  // ← ИСПРАВИЛ: правильный формат!
-
-        smsRepository.markPhoneAsVerified(phone, 10L);
+        String phone = "+79996666666";
+        String normalizedPhone = PhoneUtils.normalize(phone);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "logout@example.com",
@@ -10825,7 +10852,6 @@ class AuthControllerIntegrationTest {
 
         // When - делаем logout
         var logoutRequest = new RefreshTokenRequest(refreshToken);
-
         mockMvc.perform(post("/auth/logout")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(logoutRequest)))
@@ -10845,8 +10871,8 @@ class AuthControllerIntegrationTest {
     void shouldReturn401ForInvalidPassword() throws Exception {
         // Given - регистрируем пользователя
         String phone = "+79993333333";
-
-        smsRepository.markPhoneAsVerified(phone, 10L);
+        String normalizedPhone = PhoneUtils.normalize(phone);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "invalid@example.com",
@@ -10874,14 +10900,13 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"));
     }
 
-
     @Test
     @DisplayName("Должен вернуть 409 при дублировании телефона")
     void shouldReturn409ForDuplicatePhone() throws Exception {
         // Given - регистрируем первого пользователя
         String phone = "+79994444444";
-
-        smsRepository.markPhoneAsVerified(phone, 10L); // 1) верификация для 1-й регистрации
+        String normalizedPhone = PhoneUtils.normalize(phone);
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var firstRequest = new SignUpRequest(
                 "first@example.com",
@@ -10898,7 +10923,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isCreated());
 
         // ВАЖНО: после успешной регистрации сервис удаляет verification status
-        smsRepository.markPhoneAsVerified(phone, 10L); // 2) верификация для 2-й регистрации
+        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
 
         var secondRequest = new SignUpRequest(
                 "second@example.com",
@@ -10917,7 +10942,6 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLICT"));
     }
-
 }
 
 
@@ -12934,11 +12958,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logistics.userauth.IntegrationTest;
 import com.logistics.userauth.common.web.GlobalExceptionHandler;
 import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
+import com.logistics.userauth.user.adapter.in.web.dto.UserPasswordUpdateRequest;
+import com.logistics.userauth.user.adapter.in.web.dto.UserPersonalDataUpdateRequest;
 import com.logistics.userauth.user.adapter.in.web.dto.UserPhoneUpdateRequest;
 import com.logistics.userauth.user.application.port.in.GetUserInfoUseCase;
-import com.logistics.userauth.user.application.port.in.UpdateUserInfoUseCase;
+import com.logistics.userauth.user.application.port.in.UpdateUserPasswordUseCase;
+import com.logistics.userauth.user.application.port.in.UpdateUserPersonalInfoUseCase;
+import com.logistics.userauth.user.application.port.in.UpdateUserPhoneUseCase;
 import com.logistics.userauth.user.application.port.in.command.GetUserInfoCommand;
-import com.logistics.userauth.user.application.port.in.command.UpdateUserInfoCommand;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPasswordCommand;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPersonalInfoCommand;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPhoneCommand;
 import com.logistics.userauth.user.domain.User;
 import com.logistics.userauth.user.domain.UserRole;
 import com.logistics.userauth.user.infrastructure.LogisticsUserDetails;
@@ -12950,6 +12980,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.web.servlet.MockMvc;
@@ -12957,17 +12988,19 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @IntegrationTest
 @AutoConfigureMockMvc(addFilters = false)
 @Import(GlobalExceptionHandler.class)
-@DisplayName("UserController - интеграционный тест")
+@DisplayName("UserController - интеграционные тесты")
 class UserControllerIntegrationTest {
 
     private static final String ME_URL = "/users/me";
+    private static final String PHONE_URL = "/users/me/phone";
+    private static final String PASSWORD_URL = "/users/me/password";
+    private static final String PERSONAL_URL = "/users/me/personal";
 
     @Autowired
     private MockMvc mockMvc;
@@ -12979,23 +13012,31 @@ class UserControllerIntegrationTest {
     private GetUserInfoUseCase getUserInfoUseCase;
 
     @MockBean
-    private UpdateUserInfoUseCase updateUserInfoUseCase;
+    private UpdateUserPhoneUseCase updateUserPhoneUseCase;
+
+    @MockBean
+    private UpdateUserPasswordUseCase updateUserPasswordUseCase;
+
+    @MockBean
+    private UpdateUserPersonalInfoUseCase updateUserPersonalInfoUseCase;
 
     private Authentication authenticationWithUserId(Long userId) {
         var user = User.builder()
                 .id(userId)
-                .phone("79991234567")
+                .phone("89991234567")
                 .role(UserRole.CLIENT)
                 .build();
-
         var principal = new LogisticsUserDetails(user);
-
         return new UsernamePasswordAuthenticationToken(
                 principal,
                 null,
                 principal.getAuthorities()
         );
     }
+
+    // ===================================
+    // GET /users/me - Получение профиля
+    // ===================================
 
     @Test
     @DisplayName("GET /users/me: возвращает профиль текущего пользователя")
@@ -13009,7 +13050,8 @@ class UserControllerIntegrationTest {
                 .middleName("C")
                 .build();
 
-        when(getUserInfoUseCase.getUserInfo(any(GetUserInfoCommand.class))).thenReturn(expected);
+        when(getUserInfoUseCase.getUserInfo(any(GetUserInfoCommand.class)))
+                .thenReturn(expected);
 
         // When / Then
         mockMvc.perform(get(ME_URL)
@@ -13022,105 +13064,317 @@ class UserControllerIntegrationTest {
         verify(getUserInfoUseCase).getUserInfo(captor.capture());
         assertThat(captor.getValue().userId()).isEqualTo(10L);
 
-        verifyNoInteractions(updateUserInfoUseCase);
+        verifyNoInteractions(updateUserPhoneUseCase, updateUserPasswordUseCase, updateUserPersonalInfoUseCase);
     }
 
-    @Test
-    @DisplayName("PUT /users/me: обновляет профиль и возвращает обновлённые данные")
-    void shouldUpdateUserInfo() throws Exception {
-        // Given
-        var request = new UserPhoneUpdateRequest(
-                "new@mail.com",
-                "89990000000",
-                "New",
-                "Name",
-                "Mid",
-                "OldPass123!",
-                "NewPass123!"
-        );
+    // =========================================
+    // PUT /users/me/phone - Обновление телефона
+    // =========================================
 
+    @Test
+    @DisplayName("PUT /users/me/phone: успешно обновляет телефон пользователя")
+    void shouldUpdatePhoneSuccessfully() throws Exception {
+        // Given
+        var request = new UserPhoneUpdateRequest("89990000000");
         var expected = UserInfoResponse.builder()
-                .email("new@mail.com")
+                .email("user@example.com")
                 .phone("89990000000")
-                .firstName("New")
-                .lastName("Name")
-                .middleName("Mid")
+                .firstName("Иван")
+                .lastName("Иванов")
+                .middleName("Иванович")
                 .build();
 
-        when(updateUserInfoUseCase.update(any(UpdateUserInfoCommand.class))).thenReturn(expected);
+        when(updateUserPhoneUseCase.update(any(UpdateUserPhoneCommand.class)))
+                .thenReturn(expected);
 
         // When / Then
-        mockMvc.perform(put(ME_URL)
-                        .principal(authenticationWithUserId(7L))
+        mockMvc.perform(put(PHONE_URL)
+                        .principal(authenticationWithUserId(5L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().json(objectMapper.writeValueAsString(expected)));
 
-        var captor = ArgumentCaptor.forClass(UpdateUserInfoCommand.class);
-        verify(updateUserInfoUseCase).update(captor.capture());
+        var captor = ArgumentCaptor.forClass(UpdateUserPhoneCommand.class);
+        verify(updateUserPhoneUseCase).update(captor.capture());
 
-        var cmd = captor.getValue();
-        assertThat(cmd.userId()).isEqualTo(7L);
-        assertThat(cmd.email()).isEqualTo("new@mail.com");
-        assertThat(cmd.phone()).isEqualTo("89990000000");
-        assertThat(cmd.firstName()).isEqualTo("New");
-        assertThat(cmd.lastName()).isEqualTo("Name");
-        assertThat(cmd.middleName()).isEqualTo("Mid");
-        assertThat(cmd.oldPassword()).isEqualTo("OldPass123!");
-        assertThat(cmd.newPassword()).isEqualTo("NewPass123!");
+        var command = captor.getValue();
+        assertThat(command.userId()).isEqualTo(5L);
+        assertThat(command.phone()).isEqualTo("89990000000");
 
-        verifyNoInteractions(getUserInfoUseCase);
+        verifyNoInteractions(getUserInfoUseCase, updateUserPasswordUseCase, updateUserPersonalInfoUseCase);
     }
 
     @Test
-    @DisplayName("PUT /users/me: возвращает 400 при невалидном email (валидация DTO)")
+    @DisplayName("PUT /users/me/phone: возвращает 400 при невалидном телефоне")
+    void shouldReturn400ForInvalidPhone() throws Exception {
+        // Given
+        var request = new UserPhoneUpdateRequest("123"); // Невалидный номер
+
+        // When / Then
+        mockMvc.perform(put(PHONE_URL)
+                        .principal(authenticationWithUserId(5L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(updateUserPhoneUseCase);
+    }
+
+    // =========================================
+    // PUT /users/me/password - Обновление пароля
+    // =========================================
+
+    @Test
+    @DisplayName("PUT /users/me/password: успешно обновляет пароль пользователя")
+    void shouldUpdatePasswordSuccessfully() throws Exception {
+        // Given
+        var request = new UserPasswordUpdateRequest("OldPass123!", "NewPass123!");
+
+        doNothing().when(updateUserPasswordUseCase).update(any(UpdateUserPasswordCommand.class));
+
+        // When / Then
+        mockMvc.perform(put(PASSWORD_URL)
+                        .principal(authenticationWithUserId(7L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        var captor = ArgumentCaptor.forClass(UpdateUserPasswordCommand.class);
+        verify(updateUserPasswordUseCase).update(captor.capture());
+
+        var command = captor.getValue();
+        assertThat(command.userId()).isEqualTo(7L);
+        assertThat(command.oldPassword()).isEqualTo("OldPass123!");
+        assertThat(command.newPassword()).isEqualTo("NewPass123!");
+
+        verifyNoInteractions(getUserInfoUseCase, updateUserPhoneUseCase, updateUserPersonalInfoUseCase);
+    }
+
+    @Test
+    @DisplayName("PUT /users/me/password: возвращает 400 при невалидном пароле")
+    void shouldReturn400ForInvalidPassword() throws Exception {
+        // Given
+        var request = new UserPasswordUpdateRequest("OldPass123!", "weak"); // Слабый пароль
+
+        // When / Then
+        mockMvc.perform(put(PASSWORD_URL)
+                        .principal(authenticationWithUserId(7L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(updateUserPasswordUseCase);
+    }
+
+    @Test
+    @DisplayName("PUT /users/me/password: возвращает 401 при неверном старом пароле")
+    void shouldReturn401ForWrongOldPassword() throws Exception {
+        // Given
+        var request = new UserPasswordUpdateRequest("WrongPass123!", "NewPass123!");
+
+        doThrow(new BadCredentialsException("Неверный старый пароль"))
+                .when(updateUserPasswordUseCase).update(any(UpdateUserPasswordCommand.class));
+
+        // When / Then
+        mockMvc.perform(put(PASSWORD_URL)
+                        .principal(authenticationWithUserId(7L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.message").value("Неверный старый пароль"));
+
+        verify(updateUserPasswordUseCase).update(any(UpdateUserPasswordCommand.class));
+    }
+
+    // ==============================================
+    // PATCH /users/me/personal - Обновление персональных данных
+    // ==============================================
+
+    @Test
+    @DisplayName("PATCH /users/me/personal: успешно обновляет персональные данные")
+    void shouldUpdatePersonalInfoSuccessfully() throws Exception {
+        // Given
+        var request = new UserPersonalDataUpdateRequest(
+                "Новое",
+                "Имя",
+                "Отчество",
+                "new@example.com"
+        );
+
+        var expected = UserInfoResponse.builder()
+                .email("new@example.com")
+                .phone("89991234567")
+                .firstName("Новое")
+                .lastName("Имя")
+                .middleName("Отчество")
+                .build();
+
+        when(updateUserPersonalInfoUseCase.update(any(UpdateUserPersonalInfoCommand.class)))
+                .thenReturn(expected);
+
+        // When / Then
+        mockMvc.perform(patch(PERSONAL_URL)
+                        .principal(authenticationWithUserId(3L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(content().json(objectMapper.writeValueAsString(expected)));
+
+        var captor = ArgumentCaptor.forClass(UpdateUserPersonalInfoCommand.class);
+        verify(updateUserPersonalInfoUseCase).update(captor.capture());
+
+        var command = captor.getValue();
+        assertThat(command.userId()).isEqualTo(3L);
+        assertThat(command.firstName()).isEqualTo("Новое");
+        assertThat(command.lastName()).isEqualTo("Имя");
+        assertThat(command.middleName()).isEqualTo("Отчество");
+        assertThat(command.email()).isEqualTo("new@example.com");
+
+        verifyNoInteractions(getUserInfoUseCase, updateUserPhoneUseCase, updateUserPasswordUseCase);
+    }
+
+    @Test
+    @DisplayName("PATCH /users/me/personal: успешно обновляет только email")
+    void shouldUpdateOnlyEmail() throws Exception {
+        // Given
+        var request = new UserPersonalDataUpdateRequest(
+                null,
+                null,
+                null,
+                "newemail@example.com"
+        );
+
+        var expected = UserInfoResponse.builder()
+                .email("newemail@example.com")
+                .phone("89991234567")
+                .firstName("Иван")
+                .lastName("Иванов")
+                .middleName("Иванович")
+                .build();
+
+        when(updateUserPersonalInfoUseCase.update(any(UpdateUserPersonalInfoCommand.class)))
+                .thenReturn(expected);
+
+        // When / Then
+        mockMvc.perform(patch(PERSONAL_URL)
+                        .principal(authenticationWithUserId(3L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("newemail@example.com"))
+                .andExpect(jsonPath("$.phone").value("89991234567"));
+
+        verify(updateUserPersonalInfoUseCase).update(any(UpdateUserPersonalInfoCommand.class));
+    }
+
+    @Test
+    @DisplayName("PATCH /users/me/personal: возвращает 400 при невалидном email")
     void shouldReturn400ForInvalidEmail() throws Exception {
         // Given
-        var request = new UserPhoneUpdateRequest(
-                "not-an-email",
-                "79990000000",
-                "New",
-                "Name",
-                "Mid",
+        var request = new UserPersonalDataUpdateRequest(
+                "Имя",
+                "Фамилия",
+                "Отчество",
+                "not-an-email" // Невалидный email
+        );
+
+        // When / Then
+        mockMvc.perform(patch(PERSONAL_URL)
+                        .principal(authenticationWithUserId(3L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(updateUserPersonalInfoUseCase);
+    }
+
+    @Test
+    @DisplayName("PATCH /users/me/personal: успешно обновляет только имя и фамилию")
+    void shouldUpdateOnlyNameFields() throws Exception {
+        // Given
+        var request = new UserPersonalDataUpdateRequest(
+                "Петр",
+                "Петров",
                 null,
                 null
         );
 
+        var expected = UserInfoResponse.builder()
+                .email("user@example.com")
+                .phone("89991234567")
+                .firstName("Петр")
+                .lastName("Петров")
+                .middleName("Иванович")
+                .build();
+
+        when(updateUserPersonalInfoUseCase.update(any(UpdateUserPersonalInfoCommand.class)))
+                .thenReturn(expected);
+
         // When / Then
-        mockMvc.perform(put(ME_URL)
-                        .principal(authenticationWithUserId(7L))
+        mockMvc.perform(patch(PERSONAL_URL)
+                        .principal(authenticationWithUserId(3L))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
-                .andExpect(jsonPath("$.fields.email").exists());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.firstName").value("Петр"))
+                .andExpect(jsonPath("$.lastName").value("Петров"));
 
-        verifyNoInteractions(updateUserInfoUseCase, getUserInfoUseCase);
+        var captor = ArgumentCaptor.forClass(UpdateUserPersonalInfoCommand.class);
+        verify(updateUserPersonalInfoUseCase).update(captor.capture());
+
+        var command = captor.getValue();
+        assertThat(command.firstName()).isEqualTo("Петр");
+        assertThat(command.lastName()).isEqualTo("Петров");
+        assertThat(command.middleName()).isNull();
+        assertThat(command.email()).isNull();
     }
 
+    // ===================================
+    // Дополнительные граничные случаи
+    // ===================================
+
     @Test
-    @DisplayName("PUT /users/me: возвращает 401, если пользователь не аутентифицирован")
-    void shouldReturn401WhenNoAuthentication() throws Exception {
+    @DisplayName("Все эндпоинты: возвращают правильный Content-Type")
+    void shouldReturnCorrectContentType() throws Exception {
         // Given
-        var request = new UserPhoneUpdateRequest(
-                "a@b.com",
-                "89990000000",
-                "A",
-                "B",
-                "C",
-                "",
-                ""
-        );
+        var phoneRequest = new UserPhoneUpdateRequest("89990000000");
+        var personalRequest = new UserPersonalDataUpdateRequest("A", "B", "C", "a@b.com");
 
+        var userInfoResponse = UserInfoResponse.builder()
+                .email("a@b.com")
+                .phone("89990000000")
+                .firstName("A")
+                .lastName("B")
+                .middleName("C")
+                .build();
 
-        // When / Then
-        mockMvc.perform(put(ME_URL)
+        when(getUserInfoUseCase.getUserInfo(any())).thenReturn(userInfoResponse);
+        when(updateUserPhoneUseCase.update(any())).thenReturn(userInfoResponse);
+        when(updateUserPersonalInfoUseCase.update(any())).thenReturn(userInfoResponse);
+
+        // When / Then - GET
+        mockMvc.perform(get(ME_URL)
+                        .principal(authenticationWithUserId(1L)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        // When / Then - PUT phone
+        mockMvc.perform(put(PHONE_URL)
+                        .principal(authenticationWithUserId(1L))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
+                        .content(objectMapper.writeValueAsString(phoneRequest)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
-        verifyNoInteractions(updateUserInfoUseCase, getUserInfoUseCase);
+        // When / Then - PATCH personal
+        mockMvc.perform(patch(PERSONAL_URL)
+                        .principal(authenticationWithUserId(1L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(personalRequest)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 }
 
@@ -13400,13 +13654,11 @@ class GetUserInfoServiceTest {
 
 
 ================================================================================
-Файл: backend/user-auth-service/src/test/java/com/logistics/userauth/user/application/usecase/UpdateUserInfoServiceTest.java
+Файл: backend/user-auth-service/src/test/java/com/logistics/userauth/user/application/usecase/UpdateUserPasswordServiceTest.java
 ================================================================================
 package com.logistics.userauth.user.application.usecase;
 
-import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
-import com.logistics.userauth.sms.application.port.out.SmsRepository;
-import com.logistics.userauth.user.application.port.in.command.UpdateUserInfoCommand;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPasswordCommand;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import com.logistics.userauth.user.domain.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -13425,11 +13677,627 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("UpdateUserInfoService")
-class UpdateUserInfoServiceTest {
+@DisplayName("UpdateUserPasswordService - Тесты обновления пароля пользователя")
+class UpdateUserPasswordServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    private UpdateUserPasswordService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new UpdateUserPasswordService(userRepository, passwordEncoder);
+    }
+
+    @Test
+    @DisplayName("Должен успешно изменить пароль, когда старый пароль верный")
+    void shouldChangePasswordWhenOldPasswordValid() {
+        // Given
+        String oldPassword = "OldPass123!";
+        String newPassword = "NewPass123!";
+        String oldHash = "$2a$10$oldHash";
+        String newHash = "$2a$10$newHash";
+
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .passwordHash(oldHash)
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(oldPassword, oldHash)).thenReturn(true);
+        when(passwordEncoder.encode(newPassword)).thenReturn(newHash);
+
+        var command = UpdateUserPasswordCommand.builder()
+                .userId(1L)
+                .oldPassword(oldPassword)
+                .newPassword(newPassword)
+                .build();
+
+        // When
+        service.update(command);
+
+        // Then
+        verify(userRepository).findById(1L);
+        verify(passwordEncoder).matches(oldPassword, oldHash);
+        verify(passwordEncoder).encode(newPassword);
+        verify(userRepository).save(argThat(u ->
+                newHash.equals(u.getPasswordHash())
+        ));
+    }
+
+    @Test
+    @DisplayName("Должен выбросить BadCredentialsException, когда старый пароль неверный")
+    void shouldThrowWhenOldPasswordInvalid() {
+        // Given
+        String oldPassword = "WrongPass123!";
+        String newPassword = "NewPass123!";
+        String oldHash = "$2a$10$oldHash";
+
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .passwordHash(oldHash)
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(oldPassword, oldHash)).thenReturn(false);
+
+        var command = UpdateUserPasswordCommand.builder()
+                .userId(1L)
+                .oldPassword(oldPassword)
+                .newPassword(newPassword)
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(BadCredentialsException.class)
+                .hasMessageContaining("Неверный старый пароль");
+
+        verify(passwordEncoder).matches(oldPassword, oldHash);
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Должен выбросить 400, когда oldPassword отсутствует")
+    void shouldThrow400WhenOldPasswordMissing() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .passwordHash("$2a$10$oldHash")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        var command = UpdateUserPasswordCommand.builder()
+                .userId(1L)
+                .oldPassword(null)
+                .newPassword("NewPass123!")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getMessage()).contains("Введите старый пароль");
+                });
+
+        verifyNoInteractions(passwordEncoder);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Должен выбросить 400, когда oldPassword пустой")
+    void shouldThrow400WhenOldPasswordBlank() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .passwordHash("$2a$10$oldHash")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        var command = UpdateUserPasswordCommand.builder()
+                .userId(1L)
+                .oldPassword("   ")
+                .newPassword("NewPass123!")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST);
+                });
+    }
+
+    @Test
+    @DisplayName("Должен выбросить 400, когда newPassword отсутствует")
+    void shouldThrow400WhenNewPasswordMissing() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .passwordHash("$2a$10$oldHash")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        var command = UpdateUserPasswordCommand.builder()
+                .userId(1L)
+                .oldPassword("OldPass123!")
+                .newPassword(null)
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getMessage()).contains("Введите новый пароль");
+                });
+    }
+
+    @Test
+    @DisplayName("Должен выбросить 400, когда newPassword пустой")
+    void shouldThrow400WhenNewPasswordBlank() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .passwordHash("$2a$10$oldHash")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        var command = UpdateUserPasswordCommand.builder()
+                .userId(1L)
+                .oldPassword("OldPass123!")
+                .newPassword("   ")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST);
+                });
+    }
+
+    @Test
+    @DisplayName("Должен выбросить 404, когда пользователь не найден")
+    void shouldThrow404WhenUserNotFound() {
+        // Given
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        var command = UpdateUserPasswordCommand.builder()
+                .userId(999L)
+                .oldPassword("OldPass123!")
+                .newPassword("NewPass123!")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(ex.getMessage()).contains("User not found");
+                });
+
+        verify(userRepository).findById(999L);
+        verifyNoInteractions(passwordEncoder);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Должен вызвать passwordEncoder.encode для нового пароля")
+    void shouldEncodeNewPassword() {
+        // Given
+        String oldPassword = "OldPass123!";
+        String newPassword = "NewPass123!";
+        String oldHash = "$2a$10$oldHash";
+        String newHash = "$2a$10$newHash";
+
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .passwordHash(oldHash)
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(oldPassword, oldHash)).thenReturn(true);
+        when(passwordEncoder.encode(newPassword)).thenReturn(newHash);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var command = UpdateUserPasswordCommand.builder()
+                .userId(1L)
+                .oldPassword(oldPassword)
+                .newPassword(newPassword)
+                .build();
+
+        // When
+        service.update(command);
+
+        // Then
+        verify(passwordEncoder).encode(newPassword);
+        verify(userRepository).save(argThat(u -> newHash.equals(u.getPasswordHash())));
+    }
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/test/java/com/logistics/userauth/user/application/usecase/UpdateUserPersonalInfoServiceTest.java
+================================================================================
+package com.logistics.userauth.user.application.usecase;
+
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPersonalInfoCommand;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import com.logistics.userauth.user.domain.User;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("UpdateUserPersonalInfoService - Тесты обновления персональных данных")
+class UpdateUserPersonalInfoServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    private UpdateUserPersonalInfoService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new UpdateUserPersonalInfoService(userRepository);
+    }
+
+    @Test
+    @DisplayName("Должен успешно обновить все персональные данные пользователя")
+    void shouldUpdateAllPersonalData() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .email("old@example.com")
+                .phone("89991234567")
+                .firstName("Старое")
+                .lastName("Имя")
+                .middleName("Отчество")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var command = UpdateUserPersonalInfoCommand.builder()
+                .userId(1L)
+                .email("new@example.com")
+                .firstName("Новое")
+                .lastName("Фамилия")
+                .middleName("Новое отчество")
+                .build();
+
+        // When
+        var result = service.update(command);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.email()).isEqualTo("new@example.com");
+        assertThat(result.firstName()).isEqualTo("Новое");
+        assertThat(result.lastName()).isEqualTo("Фамилия");
+        assertThat(result.middleName()).isEqualTo("Новое отчество");
+        assertThat(result.phone()).isEqualTo("89991234567"); // Телефон не изменяется
+
+        verify(userRepository).findById(1L);
+        verify(userRepository).save(argThat(u ->
+                "new@example.com".equals(u.getEmail()) &&
+                        "Новое".equals(u.getFirstName()) &&
+                        "Фамилия".equals(u.getLastName()) &&
+                        "Новое отчество".equals(u.getMiddleName())
+        ));
+    }
+
+    @Test
+    @DisplayName("Должен обновить только email, если остальные поля null")
+    void shouldUpdateOnlyEmail() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .email("old@example.com")
+                .phone("89991234567")
+                .firstName("Иван")
+                .lastName("Иванов")
+                .middleName("Иванович")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var command = UpdateUserPersonalInfoCommand.builder()
+                .userId(1L)
+                .email("new@example.com")
+                .firstName(null)
+                .lastName(null)
+                .middleName(null)
+                .build();
+
+        // When
+        var result = service.update(command);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.email()).isEqualTo("new@example.com");
+
+        verify(userRepository).save(argThat(u ->
+                "new@example.com".equals(u.getEmail())
+        ));
+    }
+
+    @Test
+    @DisplayName("Должен обновить только имя и фамилию")
+    void shouldUpdateOnlyNameFields() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .email("user@example.com")
+                .phone("89991234567")
+                .firstName("Старое")
+                .lastName("Имя")
+                .middleName("Отчество")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var command = UpdateUserPersonalInfoCommand.builder()
+                .userId(1L)
+                .email(null)
+                .firstName("Новое")
+                .lastName("Фамилия")
+                .middleName(null)
+                .build();
+
+        // When
+        var result = service.update(command);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.firstName()).isEqualTo("Новое");
+        assertThat(result.lastName()).isEqualTo("Фамилия");
+
+        verify(userRepository).save(argThat(u ->
+                "Новое".equals(u.getFirstName()) &&
+                        "Фамилия".equals(u.getLastName())
+        ));
+    }
+
+    @Test
+    @DisplayName("Должен выбросить 404, когда пользователь не найден")
+    void shouldThrow404WhenUserNotFound() {
+        // Given
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        var command = UpdateUserPersonalInfoCommand.builder()
+                .userId(999L)
+                .email("new@example.com")
+                .firstName("Иван")
+                .lastName("Иванов")
+                .middleName("Иванович")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(ex.getMessage()).contains("User not found");
+                });
+
+        verify(userRepository).findById(999L);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Должен сохранить пользователя через репозиторий")
+    void shouldSaveUserThroughRepository() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .email("old@example.com")
+                .phone("89991234567")
+                .firstName("Старое")
+                .lastName("Имя")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var command = UpdateUserPersonalInfoCommand.builder()
+                .userId(1L)
+                .email("new@example.com")
+                .firstName("Новое")
+                .lastName("Фамилия")
+                .middleName("Отчество")
+                .build();
+
+        // When
+        service.update(command);
+
+        // Then
+        verify(userRepository, times(1)).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Должен вернуть UserInfoResponse с обновленными данными")
+    void shouldReturnUserInfoResponseWithUpdatedData() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .email("old@example.com")
+                .phone("89991234567")
+                .firstName("Старое")
+                .lastName("Имя")
+                .middleName("Отчество")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var command = UpdateUserPersonalInfoCommand.builder()
+                .userId(1L)
+                .email("new@example.com")
+                .firstName("Иван")
+                .lastName("Петров")
+                .middleName("Сергеевич")
+                .build();
+
+        // When
+        var result = service.update(command);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.email()).isEqualTo("new@example.com");
+        assertThat(result.phone()).isEqualTo("89991234567");
+        assertThat(result.firstName()).isEqualTo("Иван");
+        assertThat(result.lastName()).isEqualTo("Петров");
+        assertThat(result.middleName()).isEqualTo("Сергеевич");
+    }
+
+    @Test
+    @DisplayName("Должен корректно обработать null значения в полях")
+    void shouldHandleNullValuesCorrectly() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .email("user@example.com")
+                .phone("89991234567")
+                .firstName("Иван")
+                .lastName("Иванов")
+                .middleName("Иванович")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var command = UpdateUserPersonalInfoCommand.builder()
+                .userId(1L)
+                .email(null)
+                .firstName(null)
+                .lastName(null)
+                .middleName(null)
+                .build();
+
+        // When
+        var result = service.update(command);
+
+        // Then
+        assertThat(result).isNotNull();
+        verify(userRepository).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Должен сохранить пользователя и вернуть результат из репозитория")
+    void shouldSaveAndReturnResultFromRepository() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .email("old@example.com")
+                .phone("89991234567")
+                .firstName("Старое")
+                .lastName("Имя")
+                .build();
+
+        var savedUser = User.builder()
+                .id(1L)
+                .email("new@example.com")
+                .phone("89991234567")
+                .firstName("Новое")
+                .lastName("Фамилия")
+                .middleName("Отчество")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+
+        var command = UpdateUserPersonalInfoCommand.builder()
+                .userId(1L)
+                .email("new@example.com")
+                .firstName("Новое")
+                .lastName("Фамилия")
+                .middleName("Отчество")
+                .build();
+
+        // When
+        var result = service.update(command);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.email()).isEqualTo("new@example.com");
+        assertThat(result.firstName()).isEqualTo("Новое");
+
+        verify(userRepository).findById(1L);
+        verify(userRepository).save(any(User.class));
+    }
+}
+
+
+================================================================================
+Файл: backend/user-auth-service/src/test/java/com/logistics/userauth/user/application/usecase/UpdateUserPhoneServiceTest.java
+================================================================================
+package com.logistics.userauth.user.application.usecase;
+
+import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
+import com.logistics.userauth.sms.application.port.out.SmsRepository;
+import com.logistics.userauth.user.application.port.in.command.UpdateUserPhoneCommand;
+import com.logistics.userauth.user.application.port.out.UserRepository;
+import com.logistics.userauth.user.domain.User;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+@DisplayName("UpdateUserPhoneService - Тесты обновления телефона пользователя")
+class UpdateUserPhoneServiceTest {
 
     @Mock
     private UserRepository userRepository;
@@ -13437,256 +14305,216 @@ class UpdateUserInfoServiceTest {
     @Mock
     private SmsRepository smsRepository;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
-
-    private UpdateUserInfoService service;
+    private UpdateUserPhoneService service;
 
     @BeforeEach
     void setUp() {
-        service = new UpdateUserInfoService(userRepository, smsRepository, passwordEncoder);
+        service = new UpdateUserPhoneService(userRepository, smsRepository);
     }
 
     @Test
-    @DisplayName("Кидает 404, если пользователь не найден")
-    void shouldThrow404WhenUserNotFound() {
-        // Given
-        when(userRepository.findById(1L)).thenReturn(Optional.empty());
-
-        var cmd = UpdateUserInfoCommand.builder()
-                .userId(1L)
-                .email("a@b.com")
-                .phone("79990000000")
-                .firstName("A")
-                .lastName("B")
-                .middleName("C")
-                .build();
-
-        // When / Then
-        assertThatThrownBy(() -> service.update(cmd))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.NOT_FOUND));
-
-        verify(userRepository).findById(1L);
-        verifyNoMoreInteractions(userRepository);
-        verifyNoInteractions(smsRepository, passwordEncoder);
-    }
-
-    @Test
-    @DisplayName("Обновляет основные поля, если пароль не меняем и телефон не меняется")
-    void shouldUpdateProfileOnly() {
+    @DisplayName("Должен успешно обновить телефон, когда номер подтвержден через SMS")
+    void shouldUpdatePhoneWhenVerified() {
         // Given
         var user = User.builder()
                 .id(1L)
-                .email("old@mail.com")
                 .phone("79991234567")
-                .passwordHash("hash")
-                .firstName("Old")
-                .lastName("Old")
-                .middleName("Old")
+                .firstName("Иван")
+                .lastName("Иванов")
+                .email("ivan@example.com")
                 .build();
 
+        String newPhone = "89990000000";
+
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(smsRepository.isPhoneVerified(newPhone)).thenReturn(true);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        var cmd = UpdateUserInfoCommand.builder()
+        var command = UpdateUserPhoneCommand.builder()
                 .userId(1L)
-                .email("new@mail.com")
-                .phone("79991234567") // same phone
-                .firstName("New")
-                .lastName("Name")
-                .middleName("Mid")
+                .phone(newPhone)
                 .build();
 
         // When
-        var res = service.update(cmd);
+        var result = service.update(command);
 
         // Then
-        assertThat(res).isNotNull();
-        assertThat(res.email()).isEqualTo("new@mail.com");
-        assertThat(res.phone()).isEqualTo("79991234567");
-        assertThat(res.firstName()).isEqualTo("New");
-        assertThat(res.lastName()).isEqualTo("Name");
-        assertThat(res.middleName()).isEqualTo("Mid");
+        assertThat(result).isNotNull();
+        assertThat(result.phone()).isEqualTo(newPhone);
 
         verify(userRepository).findById(1L);
-        verify(userRepository).save(any(User.class));
-        verifyNoMoreInteractions(userRepository);
-        verifyNoInteractions(smsRepository, passwordEncoder);
+        verify(smsRepository).isPhoneVerified(newPhone);
+        verify(smsRepository).deleteVerificationStatus(newPhone);
+        verify(userRepository).save(argThat(u ->
+                newPhone.equals(u.getPhone())
+        ));
     }
 
     @Test
-    @DisplayName("Кидает 400, если newPassword указан, но oldPassword не передан")
-    void shouldThrow400WhenOldPasswordMissing() {
-        // Given
-        var user = User.builder()
-                .id(1L)
-                .phone("79991234567")
-                .passwordHash("oldHash")
-                .build();
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-
-        var cmd = UpdateUserInfoCommand.builder()
-                .userId(1L)
-                .email("a@b.com")
-                .phone("79991234567")
-                .firstName("A")
-                .lastName("B")
-                .middleName("C")
-                .oldPassword(null)
-                .newPassword("NewPass123!")
-                .build();
-
-        // When / Then
-        assertThatThrownBy(() -> service.update(cmd))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_REQUEST));
-
-        verify(userRepository).findById(1L);
-        verifyNoMoreInteractions(userRepository);
-        verifyNoInteractions(smsRepository, passwordEncoder);
-    }
-
-    @Test
-    @DisplayName("Кидает 401, если oldPassword неверный")
-    void shouldThrow401WhenOldPasswordInvalid() {
-        // Given
-        var user = User.builder()
-                .id(1L)
-                .phone("79991234567")
-                .passwordHash("oldHash")
-                .build();
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("wrong", "oldHash")).thenReturn(false);
-
-        var cmd = UpdateUserInfoCommand.builder()
-                .userId(1L)
-                .email("a@b.com")
-                .phone("79991234567")
-                .firstName("A")
-                .lastName("B")
-                .middleName("C")
-                .oldPassword("wrong")
-                .newPassword("NewPass123!")
-                .build();
-
-        // When / Then
-        assertThatThrownBy(() -> service.update(cmd))
-                .isInstanceOf(BadCredentialsException.class);
-
-        verify(userRepository).findById(1L);
-        verify(passwordEncoder).matches("wrong", "oldHash");
-        verifyNoMoreInteractions(passwordEncoder);
-        verify(userRepository, never()).save(any());
-        verifyNoInteractions(smsRepository);
-    }
-
-    @Test
-    @DisplayName("Обновляет passwordHash, если oldPassword валидный")
-    void shouldChangePasswordWhenOldPasswordValid() {
-        // Given
-        var user = User.builder()
-                .id(1L)
-                .phone("79991234567")
-                .passwordHash("oldHash")
-                .build();
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("OldPass123!", "oldHash")).thenReturn(true);
-        when(passwordEncoder.encode("NewPass123!")).thenReturn("newHash");
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        var cmd = UpdateUserInfoCommand.builder()
-                .userId(1L)
-                .email("a@b.com")
-                .phone("79991234567")
-                .firstName("A")
-                .lastName("B")
-                .middleName("C")
-                .oldPassword("OldPass123!")
-                .newPassword("NewPass123!")
-                .build();
-
-        // When
-        var res = service.update(cmd);
-
-        // Then
-        assertThat(res).isNotNull();
-        verify(passwordEncoder).matches("OldPass123!", "oldHash");
-        verify(passwordEncoder).encode("NewPass123!");
-        verify(userRepository).save(argThat(u -> "newHash".equals(u.getPasswordHash())));
-        verifyNoInteractions(smsRepository);
-    }
-
-    @Test
-    @DisplayName("Обновляет телефон, если новый номер подтверждён по SMS")
-    void shouldChangePhoneWhenVerified() {
-        // Given
-        var user = User.builder()
-                .id(1L)
-                .phone("79991234567")
-                .passwordHash("hash")
-                .build();
-
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(smsRepository.isPhoneVerified("79990000000")).thenReturn(true);
-        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        var cmd = UpdateUserInfoCommand.builder()
-                .userId(1L)
-                .email("a@b.com")
-                .phone("79990000000")
-                .firstName("A")
-                .lastName("B")
-                .middleName("C")
-                .build();
-
-        // When
-        var res = service.update(cmd);
-
-        // Then
-        assertThat(res).isNotNull();
-        assertThat(res.phone()).isEqualTo("79990000000");
-
-        verify(smsRepository).isPhoneVerified("79990000000");
-        verify(smsRepository).deleteVerificationStatus("79990000000");
-        verify(userRepository).save(argThat(u -> "79990000000".equals(u.getPhone())));
-    }
-
-    @Test
-    @DisplayName("Кидает ошибку, если новый номер не подтверждён по SMS")
+    @DisplayName("Должен выбросить исключение, когда номер не подтвержден")
     void shouldThrowWhenPhoneNotVerified() {
         // Given
         var user = User.builder()
                 .id(1L)
-                .phone("79991234567")
-                .passwordHash("hash")
+                .phone("89991234567")
+                .build();
+
+        String newPhone = "89990000000";
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(smsRepository.isPhoneVerified(newPhone)).thenReturn(false);
+
+        var command = UpdateUserPhoneCommand.builder()
+                .userId(1L)
+                .phone(newPhone)
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(PhoneNotVerifiedException.class)
+                .hasMessageContaining("Phone is not verified");
+
+        verify(smsRepository).isPhoneVerified(newPhone);
+        verify(smsRepository, never()).deleteVerificationStatus(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Должен вернуть существующий профиль, если номер не изменился")
+    void shouldReturnExistingProfileWhenPhoneNotChanged() {
+        // Given
+        String existingPhone = "89991234567";
+        var user = User.builder()
+                .id(1L)
+                .phone(existingPhone)
+                .firstName("Иван")
+                .lastName("Иванов")
+                .email("ivan@example.com")
                 .build();
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(smsRepository.isPhoneVerified("79990000000")).thenReturn(false);
 
-        var cmd = UpdateUserInfoCommand.builder()
+        var command = UpdateUserPhoneCommand.builder()
                 .userId(1L)
-                .email("a@b.com")
-                .phone("79990000000")
-                .firstName("A")
-                .lastName("B")
-                .middleName("C")
+                .phone(existingPhone)
                 .build();
 
-        // When / Then
-        assertThatThrownBy(() -> service.update(cmd))
-                .isInstanceOf(PhoneNotVerifiedException.class);
+        // When
+        var result = service.update(command);
 
-        verify(smsRepository).isPhoneVerified("79990000000");
-        verify(smsRepository, never()).deleteVerificationStatus(any());
-        verify(userRepository, never()).save(any());
-        verifyNoInteractions(passwordEncoder);
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.phone()).isEqualTo(existingPhone);
+
+        verify(userRepository).findById(1L);
+        verifyNoInteractions(smsRepository);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Должен выбросить 404, когда пользователь не найден")
+    void shouldThrow404WhenUserNotFound() {
+        // Given
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        var command = UpdateUserPhoneCommand.builder()
+                .userId(999L)
+                .phone("89990000000")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.NOT_FOUND);
+                });
+
+        verify(userRepository).findById(999L);
+        verifyNoInteractions(smsRepository);
+        verifyNoMoreInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("Должен выбросить 400, когда номер телефона null")
+    void shouldThrow400WhenPhoneIsNull() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        var command = UpdateUserPhoneCommand.builder()
+                .userId(1L)
+                .phone(null)
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getMessage()).contains("Phone is required");
+                });
+
+        verifyNoInteractions(smsRepository);
+    }
+
+    @Test
+    @DisplayName("Должен выбросить 400, когда номер телефона пустой")
+    void shouldThrow400WhenPhoneIsBlank() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .build();
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+
+        var command = UpdateUserPhoneCommand.builder()
+                .userId(1L)
+                .phone("   ")
+                .build();
+
+        // When & Then
+        assertThatThrownBy(() -> service.update(command))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    assertThat(((ResponseStatusException) ex).getStatusCode())
+                            .isEqualTo(HttpStatus.BAD_REQUEST);
+                });
+    }
+
+    @Test
+    @DisplayName("Должен нормализовать телефонный номер перед проверкой")
+    void shouldNormalizePhoneBeforeVerification() {
+        // Given
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .build();
+
+        String inputPhone = "+7 999 000 00 00";
+        String normalizedPhone = "89990000000";
+
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(smsRepository.isPhoneVerified(normalizedPhone)).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var command = UpdateUserPhoneCommand.builder()
+                .userId(1L)
+                .phone(inputPhone)
+                .build();
+
+        // When
+        service.update(command);
+
+        // Then
+        verify(smsRepository).isPhoneVerified(normalizedPhone);
+        verify(smsRepository).deleteVerificationStatus(normalizedPhone);
     }
 }
 
@@ -31674,16 +32502,15 @@ import { http } from "../../../shared/http/http";
 import { config } from "../../../shared/config";
 
 export const smsApi = {
-    sendCode(phone) {
-        return http(config.sms.sendCodePath, {
-            method: "POST",
-            body: { phone },
+    getSmsConfig() {
+        return http(config.sms.configPath, {
+            method: "GET",
             withAuth: false,
         });
     },
 
-    resendCode(phone) {
-        return http(config.sms.resendCodePath, {
+    sendCode(phone) {
+        return http(config.sms.sendCodePath, {
             method: "POST",
             body: { phone },
             withAuth: false,
@@ -31703,7 +32530,7 @@ export const smsApi = {
 ================================================================================
 Файл: frontend/src/features/auth/pages/ConfirmPhonePage.jsx
 ================================================================================
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { smsApi } from "../api/smsApi";
 import { authApi } from "../api/authApi";
@@ -31711,23 +32538,70 @@ import { useAuth } from "../../../shared/auth/AuthContext";
 
 export default function ConfirmPhonePage() {
     const nav = useNavigate();
-    const { state } = useLocation();
+    const location = useLocation();
     const { setTokens } = useAuth();
 
-    const phone = useMemo(() => state?.payload?.phone ?? "", [state]);
-
+    const phone = useMemo(() => location?.state?.payload?.phone ?? "", [location]);
     const [code, setCode] = useState("");
-    const [info, setInfo] = useState(null);
+
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    if (!state || state.mode !== "register") {
+    // Берём cooldown из sms/config, fallback 60. [file:2]
+    const [cooldownSeconds, setCooldownSeconds] = useState(60);
+
+    // Таймер: храним "когда снова можно отправить" и считаем оставшиеся секунды. [file:2]
+    const [resendUntil, setResendUntil] = useState(0);
+    const [now, setNow] = useState(Date.now());
+
+    const resendLeft = useMemo(() => {
+        return Math.max(0, Math.ceil((resendUntil - now) / 1000));
+    }, [resendUntil, now]);
+
+    useEffect(() => {
+        if (resendUntil <= Date.now()) return;
+        const id = setInterval(() => setNow(Date.now()), 250);
+        return () => clearInterval(id);
+    }, [resendUntil]);
+
+    // Грузим sms/config один раз при открытии страницы. [file:2]
+    useEffect(() => {
+        let mounted = true;
+
+        smsApi
+            .getSmsConfig()
+            .then((cfg) => {
+                const seconds = cfg?.resendCooldownSeconds;
+                if (mounted && Number.isFinite(seconds) && seconds > 0) {
+                    setCooldownSeconds(seconds);
+                }
+            })
+            .catch(() => {
+                // fallback: 60
+            });
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    // На страницу попадаем после отправки кода на шаге регистрации — запускаем таймер. [file:2]
+    useEffect(() => {
+        if (!phone) return;
+        setResendUntil(Date.now() + cooldownSeconds * 1000);
+    }, [phone, cooldownSeconds]);
+
+    const startCooldown = (seconds) => {
+        const s = Number(seconds);
+        if (!Number.isFinite(s) || s <= 0) return;
+        setResendUntil(Date.now() + s * 1000);
+    };
+
+    if (!location?.state || location.state.mode !== "register") {
         return (
             <div className="container">
                 <h1>Подтверждение телефона</h1>
-                <div className="error">
-                    Нет данных регистрации. Вернись на страницу регистрации.
-                </div>
+                <div className="error">Неверный сценарий. Вернитесь на регистрацию.</div>
             </div>
         );
     }
@@ -31735,16 +32609,12 @@ export default function ConfirmPhonePage() {
     async function onVerify(e) {
         e.preventDefault();
         setError(null);
-        setInfo(null);
         setLoading(true);
 
         try {
             await smsApi.verifyCode(phone, code);
-
-            // POST /auth/register
-            const tokens = await authApi.register(state.payload);
+            const tokens = await authApi.register(location.state.payload);
             setTokens(tokens.accessToken, tokens.refreshToken);
-
             nav("/profile");
         } catch (err) {
             setError(err?.payload?.message || err?.payload?.error || err.message);
@@ -31753,29 +32623,40 @@ export default function ConfirmPhonePage() {
         }
     }
 
-    async function onResend() {
+    async function onResendClick() {
+        if (loading || resendLeft > 0) return;
+
         setError(null);
-        setInfo(null);
         setLoading(true);
+
         try {
             await smsApi.resendCode(phone);
-            setInfo("Код отправлен повторно.");
+            startCooldown(cooldownSeconds);
         } catch (err) {
+            // Если вдруг словим 429 — просто перезапустим таймер на cooldownSeconds.
+            if (err?.payload?.error === "RATELIMITEXCEEDED") {
+                startCooldown(cooldownSeconds);
+            }
             setError(err?.payload?.message || err?.payload?.error || err.message);
         } finally {
             setLoading(false);
         }
     }
 
+    const resendText =
+        resendLeft > 0
+            ? `Отправить код снова можно через ${resendLeft} сек.`
+            : "Отправить код снова";
+
     return (
         <div className="container">
-            <h1>Подтверждение номера</h1>
+            <h1>Подтверждение телефона</h1>
+
             <div style={{ marginBottom: 12 }}>
-                На номер <b>{phone}</b> отправлен код.
+                На номер <b>{phone}</b> отправлен SMS-код.
             </div>
 
             {error && <div className="error">{error}</div>}
-            {info && <div className="success">{info}</div>}
 
             <form onSubmit={onVerify}>
                 <div className="field">
@@ -31785,19 +32666,36 @@ export default function ConfirmPhonePage() {
                         onChange={(e) => setCode(e.target.value)}
                         placeholder="123456"
                         autoComplete="one-time-code"
+                        disabled={loading}
                     />
                 </div>
 
-                <button disabled={loading} type="submit">
-                    Подтвердить
+                {/* Строка между инпутом и кнопкой "Подтвердить" */}
+                <div style={{ margin: "10px 0" }}>
+                    {resendLeft > 0 ? (
+                        <div style={{ fontSize: 14, opacity: 0.85 }}>{resendText}</div>
+                    ) : (
+                        <button
+                            type="button"
+                            className="link"
+                            onClick={onResendClick}
+                            disabled={loading}
+                            style={{
+                                padding: 0,
+                                border: "none",
+                                background: "transparent",
+                                cursor: loading ? "default" : "pointer",
+                            }}
+                        >
+                            {resendText}
+                        </button>
+                    )}
+                </div>
+
+                <button disabled={loading || !code} type="submit">
+                    {loading ? "Загрузка..." : "Подтвердить"}
                 </button>
             </form>
-
-            <div style={{ marginTop: 12 }}>
-                <button className="link" onClick={onResend} disabled={loading}>
-                    Отправить код ещё раз
-                </button>
-            </div>
         </div>
     );
 }
@@ -31806,30 +32704,38 @@ export default function ConfirmPhonePage() {
 ================================================================================
 Файл: frontend/src/features/auth/pages/LoginPage.jsx
 ================================================================================
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { authApi } from '../api/authApi';
-import { useAuth } from '../../../shared/auth/AuthContext';
-import PasswordInput from '../../../shared/ui/PasswordInput';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { authApi } from "../api/authApi";
+import { useAuth } from "../../../shared/auth/AuthContext";
+import PasswordInput from "../../../shared/ui/PasswordInput";
 
 export default function LoginPage() {
     const nav = useNavigate();
     const { setTokens } = useAuth();
-    const [phone, setPhone] = useState('');
-    const [password, setPassword] = useState('');
+    const [phone, setPhone] = useState("");
+    const [password, setPassword] = useState("");
     const [error, setError] = useState(null);
+    const [fieldErrors, setFieldErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
     async function onSubmit(e) {
         e.preventDefault();
         setError(null);
+        setFieldErrors({});
         setLoading(true);
+
         try {
             const tokens = await authApi.signIn({ phone, password, email: null });
             setTokens(tokens.accessToken, tokens.refreshToken);
-            nav('/profile');
+            nav("/profile");
         } catch (err) {
-            setError(err?.payload?.message || err?.payload?.error || err.message);
+            if (err?.payload?.error === "VALIDATION_FAILED" && err?.payload?.fields) {
+                setFieldErrors(err.payload.fields);
+                setError("Пожалуйста, исправьте ошибки в форме");
+            } else {
+                setError(err?.payload?.message || err?.payload?.error || err.message);
+            }
         } finally {
             setLoading(false);
         }
@@ -31839,15 +32745,17 @@ export default function LoginPage() {
         <div className="container">
             <h1>Вход</h1>
             {error && <div className="error">{error}</div>}
+
             <form onSubmit={onSubmit}>
                 <div className="field">
                     <label>Телефон</label>
                     <input
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+79991234567"
+                        placeholder="79991234567"
                         autoComplete="tel"
                     />
+                    {fieldErrors.phone && <div className="field-error">{fieldErrors.phone}</div>}
                 </div>
 
                 <div className="field">
@@ -31859,12 +32767,14 @@ export default function LoginPage() {
                         autoComplete="current-password"
                         disabled={loading}
                     />
+                    {fieldErrors.password && <div className="field-error">{fieldErrors.password}</div>}
                 </div>
 
                 <button disabled={loading} type="submit">
-                    {loading ? 'Загрузка...' : 'Войти'}
+                    {loading ? "Загрузка..." : "Войти"}
                 </button>
             </form>
+
             <div style={{ marginTop: 12 }}>
                 Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
             </div>
@@ -31879,30 +32789,28 @@ export default function LoginPage() {
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { smsApi } from "../api/smsApi";
-import PasswordInput from '../../../shared/ui/PasswordInput';
+import PasswordInput from "../../../shared/ui/PasswordInput";
 
 export default function RegisterPage() {
     const nav = useNavigate();
-
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
-
     const [firstName, setFirstName] = useState("");
     const [lastName, setLastName] = useState("");
     const [middleName, setMiddleName] = useState("");
-
     const [error, setError] = useState(null);
+    const [fieldErrors, setFieldErrors] = useState({});
     const [loading, setLoading] = useState(false);
 
     async function onSubmit(e) {
         e.preventDefault();
         setError(null);
+        setFieldErrors({});
         setLoading(true);
 
         try {
             await smsApi.sendCode(phone);
-
             nav("/confirm-phone", {
                 state: {
                     mode: "register",
@@ -31910,7 +32818,12 @@ export default function RegisterPage() {
                 },
             });
         } catch (err) {
-            setError(err?.payload?.message || err?.payload?.error || err.message);
+            if (err?.payload?.error === "VALIDATION_FAILED" && err?.payload?.fields) {
+                setFieldErrors(err.payload.fields);
+                setError("Пожалуйста, исправьте ошибки в форме");
+            } else {
+                setError(err?.payload?.message || err?.payload?.error || err.message);
+            }
         } finally {
             setLoading(false);
         }
@@ -31919,7 +32832,6 @@ export default function RegisterPage() {
     return (
         <div className="container">
             <h1>Регистрация</h1>
-
             {error && <div className="error">{error}</div>}
 
             <form onSubmit={onSubmit}>
@@ -31931,6 +32843,7 @@ export default function RegisterPage() {
                         placeholder="user@example.com"
                         autoComplete="email"
                     />
+                    {fieldErrors.email && <div className="field-error">{fieldErrors.email}</div>}
                 </div>
 
                 <div className="field">
@@ -31941,6 +32854,7 @@ export default function RegisterPage() {
                         placeholder="79991234567"
                         autoComplete="tel"
                     />
+                    {fieldErrors.phone && <div className="field-error">{fieldErrors.phone}</div>}
                 </div>
 
                 <div className="field">
@@ -31952,26 +32866,39 @@ export default function RegisterPage() {
                         autoComplete="new-password"
                         disabled={loading}
                     />
+                    {fieldErrors.password && <div className="field-error">{fieldErrors.password}</div>}
                 </div>
 
                 <div className="row">
                     <div className="field" style={{ flex: 1 }}>
                         <label>Имя</label>
-                        <input value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                        <input
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                        />
+                        {fieldErrors.firstName && <div className="field-error">{fieldErrors.firstName}</div>}
                     </div>
                     <div className="field" style={{ flex: 1 }}>
                         <label>Фамилия</label>
-                        <input value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                        <input
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                        />
+                        {fieldErrors.lastName && <div className="field-error">{fieldErrors.lastName}</div>}
                     </div>
                 </div>
 
                 <div className="field">
                     <label>Отчество (необязательно)</label>
-                    <input value={middleName} onChange={(e) => setMiddleName(e.target.value)} />
+                    <input
+                        value={middleName}
+                        onChange={(e) => setMiddleName(e.target.value)}
+                    />
+                    {fieldErrors.middleName && <div className="field-error">{fieldErrors.middleName}</div>}
                 </div>
 
                 <button disabled={loading} type="submit">
-                    Зарегистрироваться
+                    {loading ? "Загрузка..." : "Продолжить"}
                 </button>
             </form>
 
@@ -32033,27 +32960,38 @@ export const userApi = {
 ================================================================================
 Файл: frontend/src/features/user/components/ChangePasswordSection.jsx
 ================================================================================
-import React, { useState } from 'react';
-import { userApi } from '../api/userApi';
-import PasswordInput from '../../../shared/ui/PasswordInput'; // Наш компонент с "глазиком"
+import React, { useState } from "react";
+import { userApi } from "../api/userApi";
+import PasswordInput from "../../../shared/ui/PasswordInput";
 
 export default function ChangePasswordSection() {
-    const [oldPassword, setOldPassword] = useState('');
-    const [newPassword, setNewPassword] = useState('');
+    const [oldPassword, setOldPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
     const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState(null); // success или error
+    const [message, setMessage] = useState(null);
+    const [fieldErrors, setFieldErrors] = useState({});
 
     const handleChangePassword = async (e) => {
         e.preventDefault();
         setLoading(true);
         setMessage(null);
+        setFieldErrors({});
+
         try {
             await userApi.updatePassword({ oldPassword, newPassword });
-            setMessage({ type: 'success', text: 'Пароль успешно обновлен' });
-            setOldPassword('');
-            setNewPassword('');
+            setMessage({ type: "success", text: "Пароль успешно изменен" });
+            setOldPassword("");
+            setNewPassword("");
         } catch (err) {
-            setMessage({ type: 'error', text: err.response?.data?.message || 'Ошибка' });
+            if (err?.payload?.error === "VALIDATION_FAILED" && err?.payload?.fields) {
+                setFieldErrors(err.payload.fields);
+                setMessage({ type: "error", text: "Исправьте ошибки в форме" });
+            } else {
+                setMessage({
+                    type: "error",
+                    text: err.response?.data?.message || err?.payload?.message || err.message
+                });
+            }
         } finally {
             setLoading(false);
         }
@@ -32061,21 +32999,24 @@ export default function ChangePasswordSection() {
 
     return (
         <div className="profile-section">
-            <h3>Безопасность</h3>
+            <h3>Изменить пароль</h3>
             <form onSubmit={handleChangePassword}>
                 {message && (
-                    <div className={message.type === 'error' ? 'error-message' : 'success-message'}>
+                    <div className={message.type === "error" ? "error-message" : "success-message"}>
                         {message.text}
                     </div>
                 )}
+
                 <div className="form-group">
-                    <label>Текущий пароль</label>
+                    <label>Старый пароль</label>
                     <PasswordInput
                         value={oldPassword}
                         onChange={(e) => setOldPassword(e.target.value)}
                         disabled={loading}
                     />
+                    {fieldErrors.oldPassword && <div className="field-error">{fieldErrors.oldPassword}</div>}
                 </div>
+
                 <div className="form-group">
                     <label>Новый пароль</label>
                     <PasswordInput
@@ -32083,9 +33024,11 @@ export default function ChangePasswordSection() {
                         onChange={(e) => setNewPassword(e.target.value)}
                         disabled={loading}
                     />
+                    {fieldErrors.newPassword && <div className="field-error">{fieldErrors.newPassword}</div>}
                 </div>
+
                 <button type="submit" disabled={loading || !oldPassword || !newPassword}>
-                    Обновить пароль
+                    {loading ? "Сохранение..." : "Изменить пароль"}
                 </button>
             </form>
         </div>
@@ -32096,136 +33039,240 @@ export default function ChangePasswordSection() {
 ================================================================================
 Файл: frontend/src/features/user/components/ChangePhoneSection.jsx
 ================================================================================
-import React, { useState } from 'react';
-import { userApi } from '../api/userApi';
-import { smsApi } from '../../auth/api/smsApi';
+import React, { useEffect, useMemo, useState } from "react";
+import { userApi } from "../api/userApi";
+import { smsApi } from "../../auth/api/smsApi";
 
 export default function ChangePhoneSection({ currentPhone, onPhoneUpdated }) {
     const [isEditing, setIsEditing] = useState(false);
-    const [newPhone, setNewPhone] = useState('');
-    const [code, setCode] = useState('');
-    const [step, setStep] = useState('input'); // 'input' | 'verify'
+    const [newPhone, setNewPhone] = useState("");
+    const [code, setCode] = useState("");
+    const [step, setStep] = useState("input"); // "input" | "verify"
     const [error, setError] = useState(null);
+    const [fieldErrors, setFieldErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    const [cooldownSeconds, setCooldownSeconds] = useState(60);
 
-    // Сброс формы при начале редактирования
-    const startEditing = () => {
-        setIsEditing(true);
-        setNewPhone('');
-        setCode('');
-        setStep('input');
-        setError(null);
+    // Таймер: храним "время, когда можно снова отправить", а оставшиеся секунды считаем от Date.now().
+    const [resendUntil, setResendUntil] = useState(0);
+    const [now, setNow] = useState(Date.now());
+
+    const resendLeft = useMemo(() => {
+        return Math.max(0, Math.ceil((resendUntil - now) / 1000));
+    }, [resendUntil, now]);
+
+    useEffect(() => {
+        let mounted = true;
+
+        smsApi
+            .getSmsConfig()
+            .then((cfg) => {
+                const seconds = cfg?.resendCooldownSeconds;
+                if (mounted && Number.isFinite(seconds) && seconds > 0) {
+                    setCooldownSeconds(seconds);
+                }
+            })
+            .catch(() => {
+                // fallback: оставляем 60
+            });
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        if (resendUntil <= Date.now()) return;
+        const id = setInterval(() => setNow(Date.now()), 250);
+        return () => clearInterval(id);
+    }, [resendUntil]);
+
+    const isValidationError = (err) => {
+        const code = err?.payload?.error;
+        // В бэке встречается VALIDATIONFAILED (без underscore). [file:2]
+        return (code === "VALIDATIONFAILED" || code === "VALIDATION_FAILED") && err?.payload?.fields;
     };
 
-    // Отмена редактирования
-    const cancel = () => {
+    const parseSecondsFromMessage = (msg) => {
+        const s = String(msg || "");
+        let m = s.match(/(\d+)\s*сек/i);
+        if (m) return Number(m[1]);
+        m = s.match(/(\d+)/);
+        return m ? Number(m[1]) : null;
+    };
+
+    const startCooldown = (seconds) => {
+        const s = Number(seconds);
+        if (!Number.isFinite(s) || s <= 0) return;
+        setResendUntil(Date.now() + s * 1000);
+    };
+
+    const clearFlow = () => {
         setIsEditing(false);
+        setNewPhone("");
+        setCode("");
+        setStep("input");
         setError(null);
+        setFieldErrors({});
+        setResendUntil(0);
     };
 
-    // 1. Отправка кода на новый номер
     const handleSendCode = async () => {
-        if (!newPhone) return;
-
         setError(null);
+        setFieldErrors({});
         setLoading(true);
+
         try {
-            await smsApi.sendCode(newPhone);  // ✅ Исправлено
-            setStep('verify');
+            await smsApi.sendCode(newPhone);
+            setStep("verify");
+            startCooldown(cooldownSeconds);
         } catch (err) {
-            console.error(err);
-            setError(err.response?.data?.message || 'Ошибка отправки SMS. Проверьте формат номера.');
+            if (err?.payload?.error === "RATELIMITEXCEEDED") {
+                const seconds = parseSecondsFromMessage(err?.payload?.message) ?? cooldownSeconds;
+                startCooldown(seconds);
+            }
+
+            if (isValidationError(err)) {
+                setFieldErrors(err.payload.fields);
+                setError("Исправьте ошибки");
+            } else {
+                setError(err?.payload?.message || err?.payload?.error || err.message);
+            }
         } finally {
             setLoading(false);
         }
     };
 
-// 2. Проверка кода и сохранение нового номера
-    const handleVerifyAndSave = async () => {
-        if (!code) return;
+    const handleResendCode = async () => {
+        if (loading || resendLeft > 0) return;
 
         setError(null);
+        setFieldErrors({});
         setLoading(true);
+
+        try {
+            // Повтор — тем же методом отправки
+            await smsApi.sendCode(newPhone);
+            startCooldown(cooldownSeconds);
+        } catch (err) {
+            if (err?.payload?.error === "RATELIMITEXCEEDED") {
+                const seconds = parseSecondsFromMessage(err?.payload?.message) ?? cooldownSeconds;
+                startCooldown(seconds);
+            }
+            setError(err?.payload?.message || err?.payload?.error || err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleVerifyAndSave = async () => {
+        setError(null);
+        setFieldErrors({});
+        setLoading(true);
+
         try {
             await smsApi.verifyCode(newPhone, code);
-
-            const updatedUser = await userApi.updatePhone({ phone: newPhone });
-
-            onPhoneUpdated(updatedUser);
-            setIsEditing(false);
-            alert('Телефон успешно изменен!');
+            const updated = await userApi.updatePhone({ phone: newPhone });
+            onPhoneUpdated?.(updated);
+            clearFlow();
         } catch (err) {
-            console.error(err);
-            setError(err.response?.data?.message || 'Неверный код или ошибка при смене номера');
+            if (isValidationError(err)) {
+                setFieldErrors(err.payload.fields);
+                setError("Исправьте ошибки");
+            } else {
+                setError(err?.payload?.message || err?.payload?.error || err.message);
+            }
         } finally {
             setLoading(false);
         }
     };
 
+    const cancel = () => clearFlow();
 
-    if (!isEditing) {
-        return (
-            <div className="profile-section">
-                <h3>Телефон</h3>
-                <div className="phone-display">
-                    <span>{currentPhone || 'Не указан'}</span>
-                    <button className="btn-secondary" onClick={startEditing}>
-                        Изменить номер
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    const backToInput = () => {
+        setStep("input");
+        setCode("");
+        setError(null);
+        setFieldErrors({});
+        setResendUntil(0);
+    };
 
     return (
-        <div className="profile-section editing">
-            <h3>Смена телефона</h3>
+        <div className="profile-section">
+            <h3>Изменить номер телефона</h3>
 
-            {error && <div className="error">{error}</div>}
-
-            {step === 'input' ? (
-                // Шаг 1: Ввод нового номера
-                <div className="form-group">
-                    <label>Новый номер</label>
-                    <input
-                        type="tel"
-                        value={newPhone}
-                        onChange={(e) => setNewPhone(e.target.value)}
-                        placeholder="+79990000000"
-                        disabled={loading}
-                    />
-                    <div className="actions">
-                        <button onClick={handleSendCode} disabled={loading || !newPhone}>
-                            {loading ? 'Отправка...' : 'Получить код'}
-                        </button>
-                        <button className="btn-text" onClick={cancel} disabled={loading}>
-                            Отмена
-                        </button>
-                    </div>
+            {!isEditing ? (
+                <div>
+                    <p>
+                        Текущий номер: <b>{currentPhone}</b>
+                    </p>
+                    <button onClick={() => setIsEditing(true)}>Изменить</button>
                 </div>
             ) : (
-                // Шаг 2: Ввод кода подтверждения
-                <div className="form-group">
-                    <label>Код из SMS (отправлен на {newPhone})</label>
-                    <input
-                        type="text"
-                        value={code}
-                        onChange={(e) => setCode(e.target.value)}
-                        placeholder="123456"
-                        disabled={loading}
-                    />
-                    <div className="actions">
-                        <button onClick={handleVerifyAndSave} disabled={loading || !code}>
-                            {loading ? 'Проверка...' : 'Подтвердить'}
-                        </button>
-                        <button
-                            className="btn-text"
-                            onClick={() => setStep('input')}
-                            disabled={loading}
-                        >
-                            Назад
-                        </button>
-                    </div>
+                <div>
+                    {error && <div className="error">{error}</div>}
+
+                    {step === "input" ? (
+                        <div>
+                            <div className="form-group">
+                                <label>Новый номер</label>
+                                <input
+                                    type="tel"
+                                    value={newPhone}
+                                    onChange={(e) => setNewPhone(e.target.value)}
+                                    placeholder="79990000000"
+                                    disabled={loading}
+                                />
+                                {fieldErrors.phone && <div className="field-error">{fieldErrors.phone}</div>}
+                            </div>
+
+                            <div className="actions">
+                                <button onClick={handleSendCode} disabled={loading || !newPhone}>
+                                    {loading ? "Загрузка..." : "Отправить код"}
+                                </button>
+                                <button className="btn-text" onClick={cancel} disabled={loading} type="button">
+                                    Отмена
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            {resendLeft > 0 && (
+                                <div className="error">Повторная отправка возможна через {resendLeft} секунд</div>
+                            )}
+
+                            <div className="form-group">
+                                <label>Код из SMS на {newPhone}</label>
+                                <input
+                                    type="text"
+                                    value={code}
+                                    onChange={(e) => setCode(e.target.value)}
+                                    placeholder="123456"
+                                    disabled={loading}
+                                />
+                                {fieldErrors.code && <div className="field-error">{fieldErrors.code}</div>}
+                            </div>
+
+                            <div className="actions">
+                                <button onClick={handleVerifyAndSave} disabled={loading || !code}>
+                                    {loading ? "Загрузка..." : "Подтвердить"}
+                                </button>
+
+                                <button className="btn-text" onClick={backToInput} disabled={loading} type="button">
+                                    Назад
+                                </button>
+
+                                <button
+                                    className="btn-text"
+                                    onClick={handleResendCode}
+                                    disabled={loading || resendLeft > 0}
+                                    type="button"
+                                >
+                                    Отправить код снова
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -32236,25 +33283,27 @@ export default function ChangePhoneSection({ currentPhone, onPhoneUpdated }) {
 ================================================================================
 Файл: frontend/src/features/user/components/PersonalInfoSection.jsx
 ================================================================================
-import React, { useState, useEffect } from 'react';
-import { userApi } from '../api/userApi';
+import React, { useState, useEffect } from "react";
+import { userApi } from "../api/userApi";
 
 export default function PersonalInfoSection({ user, onUpdate }) {
     const [form, setForm] = useState({
-        firstName: '',
-        lastName: '',
-        middleName: '',
-        email: ''
+        firstName: "",
+        lastName: "",
+        middleName: "",
+        email: "",
     });
     const [loading, setLoading] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState({});
+    const [message, setMessage] = useState(null);
 
     useEffect(() => {
         if (user) {
             setForm({
-                firstName: user.firstName || '',
-                lastName: user.lastName || '',
-                middleName: user.middleName || '',
-                email: user.email || ''
+                firstName: user.firstName || "",
+                lastName: user.lastName || "",
+                middleName: user.middleName || "",
+                email: user.email || "",
             });
         }
     }, [user]);
@@ -32262,12 +33311,23 @@ export default function PersonalInfoSection({ user, onUpdate }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setFieldErrors({});
+        setMessage(null);
+
         try {
             const updatedUser = await userApi.updatePersonalInfo(form);
             onUpdate(updatedUser);
-            alert('Данные сохранены');
+            setMessage({ type: "success", text: "Данные успешно обновлены" });
         } catch (err) {
-            alert('Ошибка сохранения: ' + (err.response?.data?.message || err.message));
+            if (err?.payload?.error === "VALIDATION_FAILED" && err?.payload?.fields) {
+                setFieldErrors(err.payload.fields);
+                setMessage({ type: "error", text: "Исправьте ошибки в форме" });
+            } else {
+                setMessage({
+                    type: "error",
+                    text: err.response?.data?.message || err?.payload?.message || err.message
+                });
+            }
         } finally {
             setLoading(false);
         }
@@ -32275,29 +33335,38 @@ export default function PersonalInfoSection({ user, onUpdate }) {
 
     return (
         <div className="profile-section">
-            <h3>Личные данные</h3>
+            <h3>Персональные данные</h3>
             <form onSubmit={handleSubmit}>
+                {message && (
+                    <div className={message.type === "error" ? "error-message" : "success-message"}>
+                        {message.text}
+                    </div>
+                )}
+
                 <div className="form-row">
                     <div className="form-group">
                         <label>Фамилия</label>
                         <input
                             value={form.lastName}
-                            onChange={e => setForm({...form, lastName: e.target.value})}
+                            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                         />
+                        {fieldErrors.lastName && <div className="field-error">{fieldErrors.lastName}</div>}
                     </div>
                     <div className="form-group">
                         <label>Имя</label>
                         <input
                             value={form.firstName}
-                            onChange={e => setForm({...form, firstName: e.target.value})}
+                            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
                         />
+                        {fieldErrors.firstName && <div className="field-error">{fieldErrors.firstName}</div>}
                     </div>
                     <div className="form-group">
                         <label>Отчество</label>
                         <input
                             value={form.middleName}
-                            onChange={e => setForm({...form, middleName: e.target.value})}
+                            onChange={(e) => setForm({ ...form, middleName: e.target.value })}
                         />
+                        {fieldErrors.middleName && <div className="field-error">{fieldErrors.middleName}</div>}
                     </div>
                 </div>
 
@@ -32306,11 +33375,14 @@ export default function PersonalInfoSection({ user, onUpdate }) {
                     <input
                         type="email"
                         value={form.email}
-                        onChange={e => setForm({...form, email: e.target.value})}
+                        onChange={(e) => setForm({ ...form, email: e.target.value })}
                     />
+                    {fieldErrors.email && <div className="field-error">{fieldErrors.email}</div>}
                 </div>
 
-                <button type="submit" disabled={loading}>Сохранить изменения</button>
+                <button type="submit" disabled={loading}>
+                    {loading ? "Сохранение..." : "Сохранить изменения"}
+                </button>
             </form>
         </div>
     );
@@ -32383,7 +33455,7 @@ export default function PersonalInfoSection({ user, onUpdate }) {
 .btn-text {
     width: auto;
     background: none;
-    color: #6b7280;
+    color: #2563eb;
     padding: 8px;
     text-decoration: underline;
     font-size: 14px;
@@ -32428,7 +33500,7 @@ import { userApi } from '../api/userApi';
 import ChangePhoneSection from '../components/ChangePhoneSection';
 import ChangePasswordSection from '../components/ChangePasswordSection';
 import PersonalInfoSection from '../components/PersonalInfoSection';
-import './ProfilePage.css'; // Не забудьте стили
+import './ProfilePage.css';
 
 export default function ProfilePage() {
     const [user, setUser] = useState(null);
@@ -32591,8 +33663,8 @@ export const config = {
     apiBaseUrl: "http://localhost:8080/api/v1",
     sms: {
         sendCodePath: "/sms/send-verification-code",
-        resendCodePath: "/sms/resend-code",
         verifyCodePath: "/sms/verify-phone",
+        configPath: "/sms/config",
     },
 };
 
@@ -32849,6 +33921,40 @@ button:disabled {
 .password-toggle:hover:not(:disabled) {
     background: transparent;
     color: #2563eb;
+}
+
+/* Ошибки валидации для полей */
+.field-error {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 4px;
+    display: block;
+}
+
+.field {
+    margin-bottom: 16px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.error-message {
+    padding: 12px;
+    margin-bottom: 16px;
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+}
+
+.success-message {
+    padding: 12px;
+    margin-bottom: 16px;
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
 }
 
 

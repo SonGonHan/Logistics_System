@@ -3,7 +3,7 @@ import { userApi } from '../api/userApi';
 import ChangePhoneSection from '../components/ChangePhoneSection';
 import ChangePasswordSection from '../components/ChangePasswordSection';
 import PersonalInfoSection from '../components/PersonalInfoSection';
-import './ProfilePage.css'; // Не забудьте стили
+import './ProfilePage.css';
 
 export default function ProfilePage() {
     const [user, setUser] = useState(null);

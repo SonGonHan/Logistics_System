@@ -3,6 +3,7 @@ package com.logistics.userauth.sms.adapter.in.web;
 import com.logistics.userauth.common.api.SendVerificationCodeOperation;
 import com.logistics.userauth.common.api.VerifyPhoneOperation;
 import com.logistics.userauth.sms.adapter.in.web.dto.SendVerificationCodeRequest;
+import com.logistics.userauth.sms.adapter.in.web.dto.SmsConfigResponse;
 import com.logistics.userauth.sms.adapter.in.web.dto.VerifyPhoneRequest;
 import com.logistics.userauth.sms.adapter.in.web.dto.VerifyPhoneResponse;
 import com.logistics.userauth.sms.application.port.in.SendVerificationCodeUseCase;
@@ -13,11 +14,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * REST контроллер для SMS верификации.
@@ -55,6 +54,15 @@ public class SmsController {
 
     private final SendVerificationCodeUseCase sendVerificationCodeUseCase;
     private final VerifyPhoneUseCase verifyPhoneUseCase;
+
+    @Value("${app.sms.verification.resend-cooldown-seconds}")
+    private long resendCooldownSeconds;
+
+    @GetMapping("/config")
+    public ResponseEntity<SmsConfigResponse> getSmsConfig() {
+        var conf = new SmsConfigResponse(resendCooldownSeconds);
+        return ResponseEntity.ok(conf);
+    }
 
     /**
      * POST /api/v1/sms/send-verification-code — запускает отправку SMS кода на телефон.

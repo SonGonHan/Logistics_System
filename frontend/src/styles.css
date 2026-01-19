@@ -124,3 +124,55 @@ button:disabled {
     background: transparent;
     color: #2563eb;
 }
+
+/* Ошибки валидации для полей */
+.field-error {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 4px;
+    display: block;
+}
+
+.field {
+    margin-bottom: 16px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.error-message {
+    padding: 12px;
+    margin-bottom: 16px;
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    border-radius: 4px;
+}
+
+.success-message {
+    padding: 12px;
+    margin-bottom: 16px;
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+}
+
+button.link {
+    width: auto;
+    background: transparent;
+    color: #2563eb;
+    text-decoration: underline;
+    padding: 0;
+}
+
+button.link:hover:not(:disabled) {
+    background-color: transparent;
+    color: #1d4ed8;
+}
+
+button.link:disabled {
+    color: #9ca3af;
+    cursor: not-allowed;
+}

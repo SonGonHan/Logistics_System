@@ -64,10 +64,10 @@ public class AuthenticateUserService implements AuthenticateUserUseCase {
         var normalizedPhone = PhoneUtils.normalize(command.phone());
 
         var user = userRepository.findByPhone(normalizedPhone)
-                .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
+                .orElseThrow(() -> new BadCredentialsException("Неверный телефон или пароль"));
 
         if (!passwordEncoder.matches(command.password(), user.getPasswordHash())) {
-            throw new BadCredentialsException("Invalid credentials");
+            throw new BadCredentialsException("Неверный телефон или пароль");
         }
 
         var accessToken = tokenGenerator.generateAccessToken(user);
