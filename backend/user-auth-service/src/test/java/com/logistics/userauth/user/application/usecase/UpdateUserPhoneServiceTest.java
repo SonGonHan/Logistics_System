@@ -1,7 +1,7 @@
 package com.logistics.userauth.user.application.usecase;
 
 import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
-import com.logistics.userauth.sms.application.port.out.SmsRepository;
+import com.logistics.userauth.notification.sms.application.port.out.SmsRepository;
 import com.logistics.userauth.user.application.port.in.command.UpdateUserPhoneCommand;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import com.logistics.userauth.user.domain.User;
@@ -53,7 +53,7 @@ class UpdateUserPhoneServiceTest {
         String newPhone = "89990000000";
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(smsRepository.isPhoneVerified(newPhone)).thenReturn(true);
+        when(smsRepository.isVerified(newPhone)).thenReturn(true);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         var command = UpdateUserPhoneCommand.builder()
@@ -69,7 +69,7 @@ class UpdateUserPhoneServiceTest {
         assertThat(result.phone()).isEqualTo(newPhone);
 
         verify(userRepository).findById(1L);
-        verify(smsRepository).isPhoneVerified(newPhone);
+        verify(smsRepository).isVerified(newPhone);
         verify(smsRepository).deleteVerificationStatus(newPhone);
         verify(userRepository).save(argThat(u ->
                 newPhone.equals(u.getPhone())
@@ -88,7 +88,7 @@ class UpdateUserPhoneServiceTest {
         String newPhone = "89990000000";
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(smsRepository.isPhoneVerified(newPhone)).thenReturn(false);
+        when(smsRepository.isVerified(newPhone)).thenReturn(false);
 
         var command = UpdateUserPhoneCommand.builder()
                 .userId(1L)
@@ -100,7 +100,7 @@ class UpdateUserPhoneServiceTest {
                 .isInstanceOf(PhoneNotVerifiedException.class)
                 .hasMessageContaining("Phone is not verified");
 
-        verify(smsRepository).isPhoneVerified(newPhone);
+        verify(smsRepository).isVerified(newPhone);
         verify(smsRepository, never()).deleteVerificationStatus(any());
         verify(userRepository, never()).save(any());
     }
@@ -227,7 +227,7 @@ class UpdateUserPhoneServiceTest {
         String normalizedPhone = "89990000000";
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-        when(smsRepository.isPhoneVerified(normalizedPhone)).thenReturn(true);
+        when(smsRepository.isVerified(normalizedPhone)).thenReturn(true);
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         var command = UpdateUserPhoneCommand.builder()
@@ -239,7 +239,7 @@ class UpdateUserPhoneServiceTest {
         service.update(command);
 
         // Then
-        verify(smsRepository).isPhoneVerified(normalizedPhone);
+        verify(smsRepository).isVerified(normalizedPhone);
         verify(smsRepository).deleteVerificationStatus(normalizedPhone);
     }
 }

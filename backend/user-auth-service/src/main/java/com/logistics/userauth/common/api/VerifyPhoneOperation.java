@@ -1,6 +1,6 @@
 package com.logistics.userauth.common.api;
 
-import com.logistics.userauth.sms.adapter.in.web.dto.VerifyPhoneResponse;
+import com.logistics.userauth.notification.sms.adapter.in.web.dto.VerifyPhoneResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;

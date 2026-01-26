@@ -2,7 +2,7 @@ package com.logistics.userauth.user.application.usecase;
 
 import com.logistics.shared.utils.PhoneUtils;
 import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
-import com.logistics.userauth.sms.application.port.out.SmsRepository;
+import com.logistics.userauth.notification.sms.application.port.out.SmsRepository;
 import com.logistics.userauth.user.adapter.in.UserControllerMapper;
 import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
 import com.logistics.userauth.user.application.port.in.UpdateUserPhoneUseCase;
@@ -34,7 +34,7 @@ public class UpdateUserPhoneService implements UpdateUserPhoneUseCase {
             return UserControllerMapper.toResponse(user);
         }
 
-        if (!smsRepository.isPhoneVerified(normalizedPhone)) {
+        if (!smsRepository.isVerified(normalizedPhone)) {
             throw new PhoneNotVerifiedException("Phone is not verified");
         }
 

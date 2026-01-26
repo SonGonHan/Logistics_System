@@ -10,6 +10,22 @@ spring:
       password: ${REDIS_PASSWORD:}
       timeout: 2000ms
 
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
   modulith:
     events:
       jdbc:
@@ -37,6 +53,10 @@ logistics:
     default-cache-ttl-minutes: 60
     sms-code:
       key-prefix: "sms:verification:"
+      ttl-minutes: 5
+      max-attempts: 3
+    email-code:
+      key-prefix: "email:verification:"
       ttl-minutes: 5
       max-attempts: 3
 
@@ -68,6 +88,21 @@ app:
       resend-cooldown-seconds: 5 # Задержка перед повторной отправкой
       verified-status-ttl-minutes: 5
 
+  email:
+    # Провайдер email
+    provider: mock  # smtp | mock
+
+    # SMTP настройки (используются при provider: smtp)
+    smtp:
+      sender-name: Logistics System
+
+    # Общие настройки верификации
+    verification:
+      code-length: 6
+      code-ttl-minutes: 5
+      max-attempts: 3 # Максимум попыток ввода кода
+      resend-cooldown-seconds: 60 # Задержка перед повторной отправкой (в секундах)
+      verified-status-ttl-minutes: 10
 
   jwt:
     secret: a6211eda82d5e2b402a0f3a4525c0818f2300f717a4da49d4fb5889a646d5eab

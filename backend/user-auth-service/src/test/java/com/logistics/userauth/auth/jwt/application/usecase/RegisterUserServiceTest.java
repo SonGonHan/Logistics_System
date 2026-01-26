@@ -5,7 +5,7 @@ import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedExc
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
-import com.logistics.userauth.sms.application.port.out.SmsRepository;
+import com.logistics.userauth.notification.sms.application.port.out.SmsRepository;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import com.logistics.userauth.user.domain.User;
 import com.logistics.userauth.user.domain.UserRole;
@@ -80,7 +80,7 @@ class RegisterUserServiceTest {
     @DisplayName("Должен успешно зарегистрировать пользователя и вернуть JWT токены")
     void shouldRegisterUserAndReturnJwt() {
         // Given
-        when(smsRepository.isPhoneVerified(validCommand.phone())).thenReturn(true);
+        when(smsRepository.isVerified(validCommand.phone())).thenReturn(true);
         when(passwordEncoder.encode(validCommand.rawPassword())).thenReturn("encodedPass");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(tokenGenerator.generateAccessToken(savedUser)).thenReturn("access-token");
@@ -95,7 +95,7 @@ class RegisterUserServiceTest {
         assertThat(response.refreshToken()).isEqualTo("refresh-token");
 
         // Verify interactions
-        verify(smsRepository).isPhoneVerified(validCommand.phone());
+        verify(smsRepository).isVerified(validCommand.phone());
         verify(passwordEncoder).encode(validCommand.rawPassword());
         verify(userRepository).save(any(User.class));
         verify(smsRepository).deleteVerificationStatus(validCommand.phone());
@@ -107,14 +107,14 @@ class RegisterUserServiceTest {
     @DisplayName("Должен выбросить PhoneNotVerifiedException если телефон не верифицирован")
     void shouldThrowPhoneNotVerifiedExceptionWhenPhoneNotVerified() {
         // Given
-        when(smsRepository.isPhoneVerified(validCommand.phone())).thenReturn(false);
+        when(smsRepository.isVerified(validCommand.phone())).thenReturn(false);
 
         // When & Then
         assertThatThrownBy(() -> service.register(validCommand))
                 .isInstanceOf(PhoneNotVerifiedException.class);
 
         // Verify
-        verify(smsRepository).isPhoneVerified(validCommand.phone());
+        verify(smsRepository).isVerified(validCommand.phone());
         verify(userRepository, never()).save(any());
         verify(tokenGenerator, never()).generateAccessToken(any());
     }
@@ -123,7 +123,7 @@ class RegisterUserServiceTest {
     @DisplayName("Должен выбросить DataIntegrityViolationException при дублировании телефона")
     void shouldThrowDataIntegrityViolationExceptionWhenPhoneDuplicated() {
         // Given
-        when(smsRepository.isPhoneVerified(validCommand.phone())).thenReturn(true);
+        when(smsRepository.isVerified(validCommand.phone())).thenReturn(true);
         when(passwordEncoder.encode(validCommand.rawPassword())).thenReturn("encodedPass");
         when(userRepository.save(any(User.class)))
                 .thenThrow(new DataIntegrityViolationException("Duplicate phone"));
@@ -133,7 +133,7 @@ class RegisterUserServiceTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         // Verify
-        verify(smsRepository).isPhoneVerified(validCommand.phone());
+        verify(smsRepository).isVerified(validCommand.phone());
         verify(userRepository).save(any(User.class));
         verify(tokenGenerator, never()).generateAccessToken(any());
     }
@@ -142,7 +142,7 @@ class RegisterUserServiceTest {
     @DisplayName("Должен правильно сохранить пользователя с захешированным паролем")
     void shouldSaveUserWithEncodedPassword() {
         // Given
-        when(smsRepository.isPhoneVerified(validCommand.phone())).thenReturn(true);
+        when(smsRepository.isVerified(validCommand.phone())).thenReturn(true);
         when(passwordEncoder.encode(validCommand.rawPassword())).thenReturn("encodedPass");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(tokenGenerator.generateAccessToken(any())).thenReturn("access-token");
@@ -169,7 +169,7 @@ class RegisterUserServiceTest {
     @DisplayName("Должен удалить статус верификации после успешной регистрации")
     void shouldDeleteVerificationStatusAfterRegistration() {
         // Given
-        when(smsRepository.isPhoneVerified(validCommand.phone())).thenReturn(true);
+        when(smsRepository.isVerified(validCommand.phone())).thenReturn(true);
         when(passwordEncoder.encode(validCommand.rawPassword())).thenReturn("encodedPass");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
         when(tokenGenerator.generateAccessToken(any())).thenReturn("access-token");
@@ -208,7 +208,7 @@ class RegisterUserServiceTest {
                 .status(UserStatus.ACTIVE)
                 .build();
 
-        when(smsRepository.isPhoneVerified(commandWithoutEmail.phone())).thenReturn(true);
+        when(smsRepository.isVerified(commandWithoutEmail.phone())).thenReturn(true);
         when(passwordEncoder.encode(commandWithoutEmail.rawPassword())).thenReturn("encodedPass");
         when(userRepository.save(any(User.class))).thenReturn(userWithoutEmail);
         when(tokenGenerator.generateAccessToken(any())).thenReturn("access-token");

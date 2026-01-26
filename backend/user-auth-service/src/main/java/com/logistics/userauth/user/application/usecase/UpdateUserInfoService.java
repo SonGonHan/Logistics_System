@@ -1,7 +1,6 @@
 package com.logistics.userauth.user.application.usecase;
 
-import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
-import com.logistics.userauth.sms.application.port.out.SmsRepository;
+import com.logistics.userauth.notification.sms.application.port.out.SmsRepository;
 import com.logistics.userauth.user.adapter.in.UserControllerMapper;
 import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
 import com.logistics.userauth.user.application.port.in.UpdateUserInfoUseCase;
@@ -9,7 +8,6 @@ import com.logistics.userauth.user.application.port.in.command.UpdateUserInfoCom
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -25,7 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
  * При неверном {@code oldPassword} выбрасывает {@link org.springframework.security.authentication.BadCredentialsException}.
  *
  * <h2>Смена телефона</h2>
- * Если телефон меняется, требует подтверждения номера через {@link com.logistics.userauth.sms.application.port.out.SmsRepository#isPhoneVerified(String)}.
+ * Если телефон меняется, требует подтверждения номера через {@link SmsRepository#isPhoneVerified(String)}.
  * При неподтвержденном номере выбрасывает {@link com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException}.
  *
  * <h2>Persistence</h2>

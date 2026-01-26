@@ -1,7 +1,4 @@
-/* frontend/src/features/user/pages/ProfilePage.css */
-
 .profile-page {
-    /* Расширяем контейнер для профиля, если нужно */
     max-width: 800px;
 }
 
@@ -17,7 +14,7 @@
 /* Заголовки секций */
 .profile-section h3 {
     margin-top: 0;
-    margin-bottom: 24px; /* Увеличили отступ снизу */
+    margin-bottom: 24px;
     font-size: 18px;
     color: #111827;
     border-bottom: 1px solid #f3f4f6;
@@ -37,7 +34,7 @@
 .form-row {
     display: flex;
     gap: 16px;
-    margin-bottom: 20px; /* Чуть увеличили отступ снизу */
+    margin-bottom: 20px;
 }
 
 .form-row .form-group {
@@ -75,7 +72,7 @@
 .btn-text:hover:not(:disabled) {
     background: #2563eb;
     color: #ffffff;
-    text-decoration: none; /* можно убрать, чтобы выглядело как кнопка */
+    text-decoration: none;
 }
 
 /* Нажатие (опционально, чуть темнее) */
@@ -98,7 +95,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-top: 24px; /* !!! Увеличили отступ сверху для кнопок в смене телефона */
+    margin-top: 24px;
 }
 
 .actions button {
@@ -107,8 +104,8 @@
 
 /* Кнопки отправки форм (Обновить пароль, Сохранить изменения) */
 .profile-section form > button[type="submit"] {
-    margin-top: 24px; /* !!! Добавили явный отступ сверху для основных кнопок */
-    width: 100%; /* На всякий случай возвращаем на всю ширину, если сбилось */
+    margin-top: 24px;
+    width: 100%;
 }
 
 /* Разделитель (если используете hr) */

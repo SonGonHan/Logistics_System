@@ -2,9 +2,10 @@ package com.logistics.userauth.common.web;
 
 import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
-import com.logistics.userauth.sms.application.exception.InvalidVerificationCodeException;
-import com.logistics.userauth.sms.application.exception.RateLimitExceededException;
-import com.logistics.userauth.sms.application.exception.SmsDeliveryException;
+import com.logistics.userauth.notification.common.application.exception.InvalidVerificationCodeException;
+import com.logistics.userauth.notification.common.application.exception.RateLimitExceededException;
+import com.logistics.userauth.notification.email.application.exception.EmailDeliveryException;
+import com.logistics.userauth.notification.sms.application.exception.SmsDeliveryException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -132,7 +133,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Обработка ошибок отправки SMS.
+     * Обработка ошибок доставки SMS
      *
      * @param ex SmsDeliveryException
      * @return ResponseEntity с кодом 503
@@ -141,6 +142,20 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleSmsDeliveryError(SmsDeliveryException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "SMS_DELIVERY_FAILED");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
+    }
+
+    /**
+     * Обработка ошибок доставки Email
+     *
+     * @param ex EmailDeliveryException
+     * @return ResponseEntity с кодом 503
+     */
+    @ExceptionHandler(EmailDeliveryException.class)
+    public ResponseEntity<Map<String, Object>> handleEmailDeliveryError(EmailDeliveryException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "EMAIL_DELIVERY_FAILED");
         body.put("message", ex.getMessage());
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(body);
     }

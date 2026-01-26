@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logistics.shared.utils.PhoneUtils;
 import com.logistics.userauth.IntegrationTest;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.RefreshTokenRequest;
-import com.logistics.userauth.sms.application.port.out.SendSmsPort;
-import com.logistics.userauth.sms.application.port.out.SmsRepository;
+import com.logistics.userauth.notification.sms.application.port.out.SendSmsPort;
+import com.logistics.userauth.notification.sms.application.port.out.SmsRepository;
 import com.logistics.userauth.user.adapter.in.web.dto.SignInRequest;
 import com.logistics.userauth.user.adapter.in.web.dto.SignUpRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,7 +55,7 @@ class AuthControllerIntegrationTest {
         // Given - верифицируем телефон
         String phone = "+79991111111";
         String normalizedPhone = PhoneUtils.normalize(phone);
-        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
+        smsRepository.markAsVerified(normalizedPhone, 10L);
 
         // When
         var signUpRequest = new SignUpRequest(
@@ -108,7 +108,7 @@ class AuthControllerIntegrationTest {
         String password = "Password123!";
 
         // Верифицируем телефон
-        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
+        smsRepository.markAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "login@example.com",
@@ -143,7 +143,7 @@ class AuthControllerIntegrationTest {
         // Given - регистрируем пользователя
         String phone = "+79995555555";
         String normalizedPhone = PhoneUtils.normalize(phone);
-        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
+        smsRepository.markAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "refresh@example.com",
@@ -188,7 +188,7 @@ class AuthControllerIntegrationTest {
         // Given - регистрируем пользователя
         String phone = "+79996666666";
         String normalizedPhone = PhoneUtils.normalize(phone);
-        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
+        smsRepository.markAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "logout@example.com",
@@ -231,7 +231,7 @@ class AuthControllerIntegrationTest {
         // Given - регистрируем пользователя
         String phone = "+79993333333";
         String normalizedPhone = PhoneUtils.normalize(phone);
-        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
+        smsRepository.markAsVerified(normalizedPhone, 10L);
 
         var signUpRequest = new SignUpRequest(
                 "invalid@example.com",
@@ -265,7 +265,7 @@ class AuthControllerIntegrationTest {
         // Given - регистрируем первого пользователя
         String phone = "+79994444444";
         String normalizedPhone = PhoneUtils.normalize(phone);
-        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
+        smsRepository.markAsVerified(normalizedPhone, 10L);
 
         var firstRequest = new SignUpRequest(
                 "first@example.com",
@@ -282,7 +282,7 @@ class AuthControllerIntegrationTest {
                 .andExpect(status().isCreated());
 
         // ВАЖНО: после успешной регистрации сервис удаляет verification status
-        smsRepository.markPhoneAsVerified(normalizedPhone, 10L);
+        smsRepository.markAsVerified(normalizedPhone, 10L);
 
         var secondRequest = new SignUpRequest(
                 "second@example.com",

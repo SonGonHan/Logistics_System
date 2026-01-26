@@ -8,7 +8,7 @@ import com.logistics.userauth.auth.jwt.application.port.in.RegisterUserUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.out.TokenGeneratorPort;
-import com.logistics.userauth.sms.application.port.out.SmsRepository;
+import com.logistics.userauth.notification.sms.application.port.out.SmsRepository;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import com.logistics.userauth.user.domain.User;
 import com.logistics.userauth.user.domain.UserRole;
@@ -102,7 +102,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     }
 
     private void validatePhoneVerification(String phone) {
-        if (!smsRepository.isPhoneVerified(phone)) {
+        if (!smsRepository.isVerified(phone)) {
             throw new PhoneNotVerifiedException(
                     "Необходимо подтвердить номер телефона перед регистрацией"
             );

@@ -15,7 +15,6 @@ import com.logistics.userauth.common.api.LogoutOperation;
 import com.logistics.userauth.common.api.RefreshOperation;
 import com.logistics.userauth.common.api.SignInOperation;
 import com.logistics.userauth.common.api.SignUpOperation;
-import com.logistics.userauth.sms.application.port.in.VerifyPhoneUseCase;
 import com.logistics.userauth.user.adapter.in.web.dto.SignInRequest;
 import com.logistics.userauth.user.adapter.in.web.dto.SignUpRequest;
 import io.swagger.v3.oas.annotations.tags.Tag;

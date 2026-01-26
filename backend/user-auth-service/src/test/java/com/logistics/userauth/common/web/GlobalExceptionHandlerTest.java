@@ -3,9 +3,9 @@ package com.logistics.userauth.common.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
-import com.logistics.userauth.sms.application.exception.InvalidVerificationCodeException;
-import com.logistics.userauth.sms.application.exception.RateLimitExceededException;
-import com.logistics.userauth.sms.application.exception.SmsDeliveryException;
+import com.logistics.userauth.notification.common.application.exception.InvalidVerificationCodeException;
+import com.logistics.userauth.notification.common.application.exception.RateLimitExceededException;
+import com.logistics.userauth.notification.sms.application.exception.SmsDeliveryException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -80,12 +80,30 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("Должен возвращать 409 и CONFLICT при DataIntegrityViolationException")
-    void shouldHandleDataIntegrityViolation() throws Exception {
-        mockMvc.perform(post("/test/data-integrity"))
+    @DisplayName("Должен возвращать 409 и CONFLICT при дублировании email")
+    void shouldHandleDataIntegrityViolationEmail() throws Exception {
+        mockMvc.perform(post("/test/data-integrity-email"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("CONFLICT"))
-                .andExpect(jsonPath("$.message").value("Пользователь с таким телефоном или email уже существует"));
+                .andExpect(jsonPath("$.message").value("Пользователь с таким email уже существует"));
+    }
+
+    @Test
+    @DisplayName("Должен возвращать 409 и CONFLICT при дублировании phone")
+    void shouldHandleDataIntegrityViolationPhone() throws Exception {
+        mockMvc.perform(post("/test/data-integrity-phone"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("CONFLICT"))
+                .andExpect(jsonPath("$.message").value("Пользователь с таким телефоном уже существует"));
+    }
+
+    @Test
+    @DisplayName("Должен возвращать 409 и CONFLICT при других нарушениях уникальности")
+    void shouldHandleDataIntegrityViolationGeneric() throws Exception {
+        mockMvc.perform(post("/test/data-integrity-generic"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("CONFLICT"))
+                .andExpect(jsonPath("$.message").value("Нарушение уникальности данных"));
     }
 
     @Test
@@ -156,16 +174,27 @@ class GlobalExceptionHandlerTest {
 
         @PostMapping("/test/bad-credentials")
         public void testBadCredentials() {
-            throw new BadCredentialsException("Invalid credentials");
+            throw new BadCredentialsException("Неверный телефон или пароль");
         }
 
-        @PostMapping("/test/data-integrity")
-        public void testDataIntegrity() {
-            throw new DataIntegrityViolationException("duplicate key");
+        @PostMapping("/test/data-integrity-email")
+        public void testDataIntegrityEmail() {
+            throw new DataIntegrityViolationException("duplicate key constraint on email");
+        }
+
+        @PostMapping("/test/data-integrity-phone")
+        public void testDataIntegrityPhone() {
+            throw new DataIntegrityViolationException("duplicate key constraint on phone");
+        }
+
+        @PostMapping("/test/data-integrity-generic")
+        public void testDataIntegrityGeneric() {
+            throw new DataIntegrityViolationException("duplicate key constraint");
         }
 
         @PostMapping("/test/validation")
         public void testValidation(@Valid @RequestBody TestRequest request) {
+            // Validation происходит автоматически через @Valid
         }
 
         @PostMapping("/test/invalid-refresh-token")
