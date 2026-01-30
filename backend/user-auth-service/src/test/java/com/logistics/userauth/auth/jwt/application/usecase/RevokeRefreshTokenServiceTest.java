@@ -1,8 +1,11 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RevokeRefreshTokenCommand;
 import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
 import com.logistics.userauth.auth.session.domain.UserSession;
+import com.logistics.userauth.user.domain.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +26,9 @@ class RevokeRefreshTokenServiceTest {
     @Mock
     private UserSessionRepository repository;
 
+    @Mock
+    private CreateAuditLogUseCase createAuditLogUseCase;
+
     @InjectMocks
     private RevokeRefreshTokenService service;
 
@@ -30,8 +36,14 @@ class RevokeRefreshTokenServiceTest {
     @DisplayName("Должен отозвать валидный refresh токен")
     void shouldRevokeValidRefreshToken() {
         // Given
+        var user = User.builder()
+                .id(1L)
+                .phone("89991234567")
+                .build();
+
         var session = UserSession.builder()
                 .id(1L)
+                .user(user)
                 .refreshToken("valid-token")
                 .revoked(false)
                 .build();
@@ -63,7 +75,7 @@ class RevokeRefreshTokenServiceTest {
 
         // Then
         assertThatThrownBy(() -> service.revoke(command))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(InvalidRefreshTokenException.class)
                 .hasMessageContaining("Invalid refresh token");
     }
 }

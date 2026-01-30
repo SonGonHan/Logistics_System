@@ -6,6 +6,8 @@ import lombok.Builder;
 public record UpdateUserPasswordCommand(
         Long userId,
         String oldPassword,
-        String newPassword
+        String newPassword,
+        String ipAddress,
+        String userAgent
 ) {
 }

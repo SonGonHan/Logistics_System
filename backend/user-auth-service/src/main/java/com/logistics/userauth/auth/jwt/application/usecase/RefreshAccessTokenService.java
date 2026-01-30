@@ -1,5 +1,7 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.userauth.audit.application.port.in.command.CreateAuditLogCommand;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
 import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
@@ -14,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * Сервис для обновления access токена с использованием refresh токена.
@@ -46,6 +49,7 @@ public class RefreshAccessTokenService implements RefreshAccessTokenUseCase {
     private final UserSessionRepository repository;
     private final TokenGeneratorPort tokenGenerator;
     private final InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
+    private final CreateAuditLogUseCase createAuditLogUseCase;
 
     /**
      * Обновляет access token по refresh token и выдаёт новую пару токенов (Token Rotation).
@@ -78,6 +82,21 @@ public class RefreshAccessTokenService implements RefreshAccessTokenUseCase {
 
         session.setRevoked(true);
         repository.save(session);
+
+        // Audit: TOKEN_REFRESH
+        createAuditLogUseCase.create(new CreateAuditLogCommand(
+                session.getUser().getId(),
+                "TOKEN_REFRESH",
+                session.getUser().getPhone(),
+                command.ipAddress(),
+                command.userAgent(),
+                Map.of(
+                        "sessionId", session.getId(),
+                        "refreshedAt", LocalDateTime.now().toString()
+                ),
+                null,
+                null
+        ));
 
         String newRefreshToken = createRefreshTokenUseCase.create(
                 CreateRefreshTokenCommand.builder()

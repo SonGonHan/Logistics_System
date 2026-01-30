@@ -132,3 +132,5 @@ INSERT INTO shared_data.audit_action_types (action_type_id, action_name, categor
                                                                                                     (79, 'TRACKING_ETA_UPDATE', 'Tracking', 'Обновление прогнозируемого времени прибытия (ETA)'),
                                                                                                     (80, 'GEOLOCATION_UPDATE', 'Tracking', 'Передача GPS-координат курьером/водителем')
     ON CONFLICT (action_type_id) DO NOTHING;
+
+SELECT setval('shared_data.audit_action_types_action_type_id_seq', (SELECT MAX(action_type_id) FROM shared_data.audit_action_types));

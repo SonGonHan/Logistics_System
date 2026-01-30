@@ -1,5 +1,6 @@
 package com.logistics.userauth.user.application.usecase;
 
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
 import com.logistics.userauth.user.application.port.in.command.UpdateUserPersonalInfoCommand;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import com.logistics.userauth.user.domain.User;
@@ -26,11 +27,14 @@ class UpdateUserPersonalInfoServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private CreateAuditLogUseCase createAuditLogUseCase;
+
     private UpdateUserPersonalInfoService service;
 
     @BeforeEach
     void setUp() {
-        service = new UpdateUserPersonalInfoService(userRepository);
+        service = new UpdateUserPersonalInfoService(userRepository, createAuditLogUseCase);
     }
 
     @Test
@@ -55,6 +59,8 @@ class UpdateUserPersonalInfoServiceTest {
                 .firstName("Новое")
                 .lastName("Фамилия")
                 .middleName("Новое отчество")
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When
@@ -99,6 +105,8 @@ class UpdateUserPersonalInfoServiceTest {
                 .firstName(null)
                 .lastName(null)
                 .middleName(null)
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When
@@ -135,6 +143,8 @@ class UpdateUserPersonalInfoServiceTest {
                 .firstName("Новое")
                 .lastName("Фамилия")
                 .middleName(null)
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When
@@ -163,6 +173,8 @@ class UpdateUserPersonalInfoServiceTest {
                 .firstName("Иван")
                 .lastName("Иванов")
                 .middleName("Иванович")
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When & Then
@@ -199,6 +211,8 @@ class UpdateUserPersonalInfoServiceTest {
                 .firstName("Новое")
                 .lastName("Фамилия")
                 .middleName("Отчество")
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When
@@ -230,6 +244,8 @@ class UpdateUserPersonalInfoServiceTest {
                 .firstName("Иван")
                 .lastName("Петров")
                 .middleName("Сергеевич")
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When
@@ -266,6 +282,8 @@ class UpdateUserPersonalInfoServiceTest {
                 .firstName(null)
                 .lastName(null)
                 .middleName(null)
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When
@@ -306,6 +324,8 @@ class UpdateUserPersonalInfoServiceTest {
                 .firstName("Новое")
                 .lastName("Фамилия")
                 .middleName("Отчество")
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When

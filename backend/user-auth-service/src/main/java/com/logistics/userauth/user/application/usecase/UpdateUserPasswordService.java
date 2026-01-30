@@ -1,5 +1,7 @@
 package com.logistics.userauth.user.application.usecase;
 
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.userauth.audit.application.port.in.command.CreateAuditLogCommand;
 import com.logistics.userauth.user.application.port.in.UpdateUserPasswordUseCase;
 import com.logistics.userauth.user.application.port.in.command.UpdateUserPasswordCommand;
 import com.logistics.userauth.user.application.port.out.UserRepository;
@@ -10,12 +12,16 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class UpdateUserPasswordService implements UpdateUserPasswordUseCase {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final CreateAuditLogUseCase createAuditLogUseCase;
 
     @Override
     public void update(UpdateUserPasswordCommand command) {
@@ -35,6 +41,18 @@ public class UpdateUserPasswordService implements UpdateUserPasswordUseCase {
         }
 
         user.setPasswordHash(passwordEncoder.encode(command.newPassword()));
-        userRepository.save(user);
+        var saved = userRepository.save(user);
+
+        // Audit: PASSWORD_CHANGE
+        createAuditLogUseCase.create(new CreateAuditLogCommand(
+                saved.getId(),
+                "PASSWORD_CHANGE",
+                saved.getPhone(),
+                command.ipAddress(),
+                command.userAgent(),
+                Map.of("changedAt", LocalDateTime.now().toString()),
+                "users",
+                saved.getId()
+        ));
     }
 }

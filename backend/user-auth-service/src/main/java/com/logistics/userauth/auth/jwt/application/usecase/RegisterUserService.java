@@ -1,6 +1,8 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
 import com.logistics.shared.utils.PhoneUtils;
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.userauth.audit.application.port.in.command.CreateAuditLogCommand;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
 import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
@@ -19,6 +21,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Сервис для регистрации новых пользователей.
@@ -46,6 +50,7 @@ public class RegisterUserService implements RegisterUserUseCase {
     private final PasswordEncoder passwordEncoder;
     private final TokenGeneratorPort tokenGenerator;
     private final InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
+    private final CreateAuditLogUseCase createAuditLogUseCase;
 
     /**
      * Регистрирует нового пользователя и возвращает пару токенов (access/refresh).
@@ -86,6 +91,24 @@ public class RegisterUserService implements RegisterUserUseCase {
                 .build();
 
         var saved = userRepository.save(user);
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("email", saved.getEmail());
+        metadata.put("phone", saved.getPhone());
+        metadata.put("role", saved.getRole().name());
+        metadata.put("firstName", saved.getFirstName());
+        metadata.put("lastName", saved.getLastName());
+
+        createAuditLogUseCase.create(new CreateAuditLogCommand(
+                saved.getId(),
+                "USER_REGISTER",
+                saved.getPhone(),
+                command.ipAddress(),
+                command.userAgent(),
+                metadata,
+                "users",
+                saved.getId()
+        ));
 
         smsRepository.deleteVerificationStatus(command.phone());
 

@@ -30,7 +30,6 @@ import com.logistics.userauth.user.infrastructure.LogisticsUserDetails;
  * - ACCOUNTANT: Бухгалтер
  * - SYSTEM_ADMIN: Администратор системы (полные права)
  * - SYSTEM: Специальная роль для системных операций
- * - UNREGISTERED_CONTACT: Контакт, еще не зарегистрировавшийся
  *
  * <h2>Spring Security интеграция</h2>
  * Преобразуется в ROLE_COURIER, ROLE_CLIENT и т.д.
@@ -40,7 +39,6 @@ import com.logistics.userauth.user.infrastructure.LogisticsUserDetails;
  * @see LogisticsUserDetails для Spring Security интеграции
  */
 public enum UserRole {
-    UNREGISTERED_CONTACT,
     CLIENT,
     PVZ_OPERATOR, PVZ_ADMIN,
     COURIER, DRIVER,

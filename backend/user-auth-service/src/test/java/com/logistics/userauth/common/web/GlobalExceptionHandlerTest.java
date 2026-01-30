@@ -1,6 +1,7 @@
 package com.logistics.userauth.common.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
 import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
 import com.logistics.userauth.notification.common.application.exception.InvalidVerificationCodeException;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -46,6 +48,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 @DisplayName("GlobalExceptionHandler - тестирование обработки исключений")
 class GlobalExceptionHandlerTest {
+
+    @MockBean
+    private CreateAuditLogUseCase createAuditLogUseCase;
 
     @Autowired
     private MockMvc mockMvc;

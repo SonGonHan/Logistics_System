@@ -1,5 +1,6 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
@@ -38,6 +39,9 @@ public class AuthenticateUserServiceTest {
 
     @Mock
     private TokenGeneratorPort tokenGenerator;
+
+    @Mock
+    private CreateAuditLogUseCase createAuditLogUseCase;
 
     @Mock
     private InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;

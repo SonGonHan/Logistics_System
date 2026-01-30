@@ -1,16 +1,21 @@
 package com.logistics.userauth.auth.jwt.adapter.in.web;
 
 import com.logistics.userauth.auth.jwt.adapter.in.security.JwtAuthenticationFilter;
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.CheckUserTypeRequest;
+import com.logistics.userauth.auth.jwt.adapter.in.web.dto.CheckUserTypeResponse;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.RefreshTokenRequest;
 import com.logistics.userauth.auth.jwt.application.port.in.AuthenticateUserUseCase;
+import com.logistics.userauth.auth.jwt.application.port.in.CheckUserTypeUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.RefreshAccessTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.RegisterUserUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.RevokeRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.AuthenticateUserCommand;
+import com.logistics.userauth.auth.jwt.application.port.in.command.CheckUserTypeCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RefreshAccessTokenCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RegisterUserCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RevokeRefreshTokenCommand;
+import com.logistics.userauth.common.api.CheckUserTypeOperation;
 import com.logistics.userauth.common.api.LogoutOperation;
 import com.logistics.userauth.common.api.RefreshOperation;
 import com.logistics.userauth.common.api.SignInOperation;
@@ -30,6 +35,7 @@ import org.springframework.web.bind.annotation.*;
  *
  * <h2>Endpoints</h2>
  * <ul>
+ *   <li>POST /api/v1/auth/check-user-type — Проверка типа пользователя</li>
  *   <li>POST /api/v1/auth/register — Регистрация нового пользователя</li>
  *   <li>POST /api/v1/auth/sign-in — Вход в систему</li>
  *   <li>POST /api/v1/auth/refresh — Обновление access token</li>
@@ -54,6 +60,22 @@ public class AuthController {
     private final RegisterUserUseCase registerUserUseCase;
     private final RefreshAccessTokenUseCase refreshAccessTokenUseCase;
     private final RevokeRefreshTokenUseCase revokeRefreshTokenUseCase;
+    private final CheckUserTypeUseCase checkUserTypeUseCase;
+
+    /**
+     * POST /auth/check-user-type
+     * Проверка типа пользователя (клиент или сотрудник).
+     */
+    @PostMapping("/check-user-type")
+    @CheckUserTypeOperation
+    public ResponseEntity<CheckUserTypeResponse> checkUserType(
+            @Valid @RequestBody CheckUserTypeRequest request
+    ) {
+        var command = CheckUserTypeCommand.builder()
+                .identifier(request.identifier())
+                .build();
+        return ResponseEntity.ok(checkUserTypeUseCase.check(command));
+    }
 
     /**
      * POST /auth/sign-in

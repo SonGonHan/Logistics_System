@@ -90,13 +90,13 @@ CREATE TABLE shared_data.event_publication (
 
 CREATE TABLE user_management.users (
                                        user_id BIGSERIAL PRIMARY KEY,
-                                       email VARCHAR(255),
-                                       phone VARCHAR(20) NOT NULL UNIQUE,
+                                       email VARCHAR(255) UNIQUE,
+                                       phone VARCHAR(20) UNIQUE,
                                        password_hash VARCHAR(255),
-                                       first_name VARCHAR(100) NOT NULL,
-                                       last_name VARCHAR(100) NOT NULL,
+                                       first_name VARCHAR(100),
+                                       last_name VARCHAR(100),
                                        middle_name VARCHAR(100),
-                                       role_name VARCHAR(50) NOT NULL DEFAULT 'UNREGISTERED_CONTACT',
+                                       role_name VARCHAR(50) NOT NULL DEFAULT 'CLIENT',
                                        facility_id BIGINT,
                                        user_status VARCHAR(20) DEFAULT 'ACTIVE',
                                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -104,7 +104,6 @@ CREATE TABLE user_management.users (
 
                                        CONSTRAINT check_role_name CHECK (
                                            role_name IN (
-                                                         'UNREGISTERED_CONTACT',
                                                          'CLIENT',
                                                          'PVZ_OPERATOR',
                                                          'PVZ_ADMIN',
@@ -120,14 +119,13 @@ CREATE TABLE user_management.users (
                                                )
                                            ),
                                        CONSTRAINT check_auth_data CHECK (
-                                           (role_name IN ('UNREGISTERED_CONTACT', 'SYSTEM') AND password_hash IS NULL)
+                                           (role_name IN ('SYSTEM') AND password_hash IS NULL)
                                                OR
-                                           (role_name NOT IN ('UNREGISTERED_CONTACT', 'SYSTEM') AND password_hash IS NOT NULL AND email IS NOT NULL)
+                                           (role_name NOT IN ('SYSTEM') AND (email IS NOT NULL OR phone IS NOT NULL))
                                            )
 );
 
 COMMENT ON TABLE user_management.users IS 'Единый реестр всех пользователей системы';
-COMMENT ON COLUMN user_management.users.role_name IS 'UNREGISTERED_CONTACT - неавторизованный получатель/отправитель без пароля';
 
 CREATE TABLE user_management.user_sessions (
                                                session_id BIGSERIAL PRIMARY KEY,
@@ -176,8 +174,8 @@ CREATE TABLE waybill_service.waybill_drafts (
 );
 
 COMMENT ON TABLE waybill_service.waybill_drafts IS 'Черновики накладных со ссылками на users';
-COMMENT ON COLUMN waybill_service.waybill_drafts.sender_user_id IS 'ID отправителя (может быть UNREGISTERED_CONTACT)';
-COMMENT ON COLUMN waybill_service.waybill_drafts.recipient_user_id IS 'ID получателя (может быть UNREGISTERED_CONTACT)';
+COMMENT ON COLUMN waybill_service.waybill_drafts.sender_user_id IS 'ID отправителя';
+COMMENT ON COLUMN waybill_service.waybill_drafts.recipient_user_id IS 'ID получателя';
 
 CREATE TABLE waybill_service.waybills (
                                           waybill_id BIGSERIAL PRIMARY KEY,

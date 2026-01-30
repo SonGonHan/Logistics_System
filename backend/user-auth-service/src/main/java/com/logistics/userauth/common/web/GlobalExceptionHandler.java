@@ -1,11 +1,15 @@
 package com.logistics.userauth.common.web;
 
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.userauth.audit.application.port.in.command.CreateAuditLogCommand;
+import com.logistics.userauth.auth.jwt.application.exception.AuthenticationFailedException;
 import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
 import com.logistics.userauth.notification.common.application.exception.InvalidVerificationCodeException;
 import com.logistics.userauth.notification.common.application.exception.RateLimitExceededException;
 import com.logistics.userauth.notification.email.application.exception.EmailDeliveryException;
 import com.logistics.userauth.notification.sms.application.exception.SmsDeliveryException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +30,7 @@ import java.util.Map;
  *
  * <h2>Типы исключений</h2>
  * <ul>
+ *   <li>AuthenticationFailedException → 401 (INVALID_CREDENTIALS) + audit log</li>
  *   <li>BadCredentialsException → 401 (INVALID_CREDENTIALS)</li>
  *   <li>DataIntegrityViolationException → 409 (CONFLICT)</li>
  *   <li>MethodArgumentNotValidException → 400 (VALIDATION_FAILED)</li>
@@ -43,10 +48,44 @@ import java.util.Map;
  * </pre>
  */
 @ControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
 
+    private final CreateAuditLogUseCase createAuditLogUseCase;
+
     /**
-     * Обработка ошибок аутентификации.
+     * Обработка неудачной аутентификации с audit logging.
+     *
+     * @param ex AuthenticationFailedException
+     * @return ResponseEntity с кодом 401
+     */
+    @ExceptionHandler(AuthenticationFailedException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthenticationFailed(
+            AuthenticationFailedException ex) {
+
+        // Audit: USER_LOGIN_FAILURE
+        createAuditLogUseCase.create(new CreateAuditLogCommand(
+                null, // Неизвестный пользователь
+                "USER_LOGIN_FAILURE",
+                ex.getAttemptedPhone(),
+                ex.getIpAddress(),
+                ex.getUserAgent(),
+                Map.of(
+                        "attemptedPhone", ex.getAttemptedPhone(),
+                        "reason", "INVALID_CREDENTIALS"
+                ),
+                null,
+                null
+        ));
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "INVALID_CREDENTIALS");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
+    }
+
+    /**
+     * Обработка ошибок аутентификации (общий случай).
      *
      * @param ex BadCredentialsException
      * @return ResponseEntity с кодом 401

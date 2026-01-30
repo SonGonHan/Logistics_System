@@ -24,6 +24,8 @@ public record UpdateUserInfoCommand (
         String lastName,
         String middleName,
         String oldPassword,
-        String newPassword
+        String newPassword,
+        String ipAddress,
+        String userAgent
 ) {
 }

@@ -8,6 +8,8 @@ public record UpdateUserPersonalInfoCommand(
         String firstName,
         String lastName,
         String middleName,
-        String email
+        String email,
+        String ipAddress,
+        String userAgent
 ) {
 }

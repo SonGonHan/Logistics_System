@@ -1,11 +1,16 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.userauth.audit.application.port.in.command.CreateAuditLogCommand;
 import com.logistics.userauth.auth.jwt.application.exception.InvalidRefreshTokenException;
 import com.logistics.userauth.auth.jwt.application.port.in.RevokeRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.RevokeRefreshTokenCommand;
 import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.Map;
 
 
 /**
@@ -33,6 +38,7 @@ import org.springframework.stereotype.Service;
 public class RevokeRefreshTokenService implements RevokeRefreshTokenUseCase {
 
     private final UserSessionRepository repository;
+    private final CreateAuditLogUseCase createAuditLogUseCase;
 
     /**
      * Отзывает refresh token (logout), помечая соответствующую сессию как revoked=true.
@@ -50,8 +56,37 @@ public class RevokeRefreshTokenService implements RevokeRefreshTokenUseCase {
      */
     @Override
     public void revoke(RevokeRefreshTokenCommand command) {
-        var session = repository.findByRefreshToken(command.refreshToken()).orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
+        var session = repository.findByRefreshToken(command.refreshToken())
+                .orElseThrow(() -> new InvalidRefreshTokenException("Invalid refresh token"));
+
         session.setRevoked(true);
         repository.save(session);
+
+        // Audit: SESSION_REVOKE
+        createAuditLogUseCase.create(new CreateAuditLogCommand(
+                session.getUser().getId(),
+                "SESSION_REVOKE",
+                session.getUser().getPhone(),
+                null, // IP не доступен в revoke flow
+                null, // User-Agent не доступен
+                Map.of(
+                        "sessionId", session.getId(),
+                        "revokedAt", LocalDateTime.now().toString()
+                ),
+                "user_sessions",
+                session.getId()
+        ));
+
+        // Audit: USER_LOGOUT
+        createAuditLogUseCase.create(new CreateAuditLogCommand(
+                session.getUser().getId(),
+                "USER_LOGOUT",
+                session.getUser().getPhone(),
+                null,
+                null,
+                Map.of("sessionId", session.getId()),
+                null,
+                null
+        ));
     }
 }

@@ -1,5 +1,6 @@
 package com.logistics.userauth.user.application.usecase;
 
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
 import com.logistics.userauth.user.application.port.in.command.UpdateUserPasswordCommand;
 import com.logistics.userauth.user.application.port.out.UserRepository;
 import com.logistics.userauth.user.domain.User;
@@ -32,11 +33,14 @@ class UpdateUserPasswordServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private CreateAuditLogUseCase createAuditLogUseCase;
+
     private UpdateUserPasswordService service;
 
     @BeforeEach
     void setUp() {
-        service = new UpdateUserPasswordService(userRepository, passwordEncoder);
+        service = new UpdateUserPasswordService(userRepository, passwordEncoder, createAuditLogUseCase);
     }
 
     @Test
@@ -57,11 +61,14 @@ class UpdateUserPasswordServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(oldPassword, oldHash)).thenReturn(true);
         when(passwordEncoder.encode(newPassword)).thenReturn(newHash);
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
 
         var command = UpdateUserPasswordCommand.builder()
                 .userId(1L)
                 .oldPassword(oldPassword)
                 .newPassword(newPassword)
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When
@@ -97,6 +104,8 @@ class UpdateUserPasswordServiceTest {
                 .userId(1L)
                 .oldPassword(oldPassword)
                 .newPassword(newPassword)
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When & Then
@@ -125,6 +134,8 @@ class UpdateUserPasswordServiceTest {
                 .userId(1L)
                 .oldPassword(null)
                 .newPassword("NewPass123!")
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When & Then
@@ -156,6 +167,8 @@ class UpdateUserPasswordServiceTest {
                 .userId(1L)
                 .oldPassword("   ")
                 .newPassword("NewPass123!")
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When & Then
@@ -183,6 +196,8 @@ class UpdateUserPasswordServiceTest {
                 .userId(1L)
                 .oldPassword("OldPass123!")
                 .newPassword(null)
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When & Then
@@ -211,6 +226,8 @@ class UpdateUserPasswordServiceTest {
                 .userId(1L)
                 .oldPassword("OldPass123!")
                 .newPassword("   ")
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When & Then
@@ -232,6 +249,8 @@ class UpdateUserPasswordServiceTest {
                 .userId(999L)
                 .oldPassword("OldPass123!")
                 .newPassword("NewPass123!")
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When & Then
@@ -272,6 +291,8 @@ class UpdateUserPasswordServiceTest {
                 .userId(1L)
                 .oldPassword(oldPassword)
                 .newPassword(newPassword)
+                .ipAddress("127.0.0.1")
+                .userAgent("Test User-Agent")
                 .build();
 
         // When

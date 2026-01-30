@@ -9,6 +9,7 @@ import com.logistics.userauth.user.application.port.in.*;
 import com.logistics.userauth.user.application.port.in.command.*;
 import com.logistics.userauth.user.infrastructure.LogisticsUserDetails;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -83,7 +84,8 @@ public class UserController {
     @PutMapping("/me/password")
     public ResponseEntity<Void> updatePassword(
             Authentication authentication,
-            @Valid @RequestBody UserPasswordUpdateRequest request
+            @Valid @RequestBody UserPasswordUpdateRequest request,
+            HttpServletRequest httpRequest
     ) {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
@@ -95,6 +97,8 @@ public class UserController {
                 .userId(userId)
                 .oldPassword(request.oldPassword())
                 .newPassword(request.newPassword())
+                .ipAddress(httpRequest.getRemoteAddr())
+                .userAgent(httpRequest.getHeader("User-Agent"))
                 .build();
 
         updateUserPasswordUseCase.update(command);
@@ -105,7 +109,8 @@ public class UserController {
     @PatchMapping("/me/personal")
     public ResponseEntity<UserInfoResponse> updatePersonalInfo(
             Authentication authentication,
-            @Valid @RequestBody UserPersonalDataUpdateRequest request
+            @Valid @RequestBody UserPersonalDataUpdateRequest request,
+            HttpServletRequest httpRequest
     ) {
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized");
@@ -119,6 +124,8 @@ public class UserController {
                 .lastName(request.lastName())
                 .middleName(request.middleName())
                 .email(request.email())
+                .ipAddress(httpRequest.getRemoteAddr())
+                .userAgent(httpRequest.getHeader("User-Agent"))
                 .build();
 
         return ResponseEntity.ok(updateUserPersonalInfoUseCase.update(command));

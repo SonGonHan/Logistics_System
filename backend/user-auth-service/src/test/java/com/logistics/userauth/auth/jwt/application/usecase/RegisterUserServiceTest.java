@@ -1,5 +1,6 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
 import com.logistics.userauth.auth.jwt.adapter.in.web.dto.JwtAuthenticationResponse;
 import com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException;
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
@@ -43,6 +44,9 @@ class RegisterUserServiceTest {
 
     @Mock
     private InternalCreateRefreshTokenUseCase createRefreshTokenUseCase;
+
+    @Mock
+    private CreateAuditLogUseCase auditLogUseCase;
 
     @InjectMocks
     private RegisterUserService service;
@@ -188,7 +192,7 @@ class RegisterUserServiceTest {
         // Given
         RegisterUserCommand commandWithoutEmail = RegisterUserCommand.builder()
                 .email(null)  // ← email = null
-                .phone("79991234567")
+                .phone("89991234567")
                 .rawPassword("Password123!")
                 .firstName("John")
                 .lastName("Doe")
@@ -200,7 +204,7 @@ class RegisterUserServiceTest {
         User userWithoutEmail = User.builder()
                 .id(1L)
                 .email(null)
-                .phone("79991234567")
+                .phone("89991234567")
                 .passwordHash("encodedPass")
                 .firstName("John")
                 .lastName("Doe")

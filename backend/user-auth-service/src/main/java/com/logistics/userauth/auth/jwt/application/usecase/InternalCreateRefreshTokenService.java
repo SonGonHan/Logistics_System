@@ -1,5 +1,7 @@
 package com.logistics.userauth.auth.jwt.application.usecase;
 
+import com.logistics.userauth.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.userauth.audit.application.port.in.command.CreateAuditLogCommand;
 import com.logistics.userauth.auth.jwt.application.port.in.InternalCreateRefreshTokenUseCase;
 import com.logistics.userauth.auth.jwt.application.port.in.command.CreateRefreshTokenCommand;
 import com.logistics.userauth.auth.session.application.port.out.UserSessionRepository;
@@ -11,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -38,6 +41,7 @@ public class InternalCreateRefreshTokenService implements InternalCreateRefreshT
 
     private final UserSessionRepository sessionRepository;
     private final UserRepository userRepository;
+    private final CreateAuditLogUseCase createAuditLogUseCase;
 
     @Value("${app.jwt.refresh-expiration}")
     private long refreshTokenTtlSeconds;
@@ -76,6 +80,23 @@ public class InternalCreateRefreshTokenService implements InternalCreateRefreshT
                 .build();
 
         sessionRepository.save(session);
+
+        // Audit: SESSION_CREATE
+        createAuditLogUseCase.create(new CreateAuditLogCommand(
+                user.getId(),
+                "SESSION_CREATE",
+                user.getPhone(),
+                command.ipAddress(),
+                command.userAgent(),
+                Map.of(
+                        "sessionId", session.getId(),
+                        "expiresAt", session.getExpiresAt().toString(),
+                        "deviceInfo", command.userAgent() != null ? command.userAgent() : "unknown"
+                ),
+                "user_sessions",
+                session.getId()
+        ));
+
         return refreshToken;
     }
 }
