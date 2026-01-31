@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: CoreBusinessService
+    description: Core Business Logic Service for Logistics System
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+  flyway:
+    baseline-on-migrate: true
+
+  main:
+    allow-bean-definition-overriding: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+  compression:
+    enabled: true
+    min-response-size: 1024
+
+logistics:
+  redis:
+    enabled: true
+    key-prefix: "logistics:core-business"
+    default-cache-ttl-minutes: 60
+    pricing-rules:
+      key-prefix: "pricing:rules:"
+      ttl-minutes: 60
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.logistics: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+  api-docs:
+    path: /v3/api-docs
+  show-actuator: false

@@ -16,6 +16,7 @@
     </option>
     <option name="ignoredFiles">
       <set>
+        <option value="$PROJECT_DIR$/backend/core-business/pom.xml" />
         <option value="$PROJECT_DIR$/db-migration/pom.xml" />
         <option value="$PROJECT_DIR$/shared-library/pom.xml" />
         <option value="$PROJECT_DIR$/user-auth-service/pom.xml" />

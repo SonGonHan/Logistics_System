@@ -1,0 +1,34 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/logistics_system
+    username: admin
+    password: password
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        default_schema: waybill_service
+        platform: true
+
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+    create-schemas: true
+
+logging:
+  level:
+    root: INFO
+    com.logistics.corebusiness: DEBUG
+    org.springframework.web: DEBUG

@@ -1,16 +1,3 @@
-#FROM maven:3.9-eclipse-temurin-21-alpine AS builder
-#WORKDIR /app
-#COPY . .
-#RUN mvn clean install -DskipTests
-#
-#FROM maven:3.9-eclipse-temurin-21-alpine
-#WORKDIR /app
-#COPY --from=builder /app/user-auth-service/target/user-auth-service-1.0.0.jar app.jar
-#EXPOSE 8080
-#ENTRYPOINT ["java", "-jar", "app.jar"]
-
-
-
 # ============================================
 # Stage 1: Build
 # ============================================
@@ -28,21 +15,21 @@ COPY backend/user-auth-service/pom.xml backend/user-auth-service/
 COPY backend/core-business-service/pom.xml backend/core-business-service/
 
 # ШАГ 3: Скачиваем зависимости (кэшируется)
-RUN mvn dependency:go-offline -B -pl backend/user-auth-service -am
+RUN mvn dependency:go-offline -B -pl backend/core-business-service -am
 
 # ШАГ 4: Копируем исходники
 COPY backend/shared-library backend/shared-library
-COPY backend/user-auth-service backend/user-auth-service
+COPY backend/core-business-service backend/core-business-service
 
 # ШАГ 5: Собираем проект
-RUN mvn clean package -pl backend/user-auth-service -am -DskipTests
+RUN mvn clean package -pl backend/core-business-service -am -DskipTests
 
 # ============================================
 # Stage 2: Runtime
 # ============================================
 FROM eclipse-temurin:21-jre-alpine
 
-LABEL service="user-auth-service"
+LABEL service="core-business-service"
 
 WORKDIR /app
 
@@ -50,7 +37,7 @@ WORKDIR /app
 RUN addgroup -S spring && adduser -S spring -G spring
 
 # Копируем JAR
-COPY --from=builder /build/backend/user-auth-service/target/*.jar app.jar
+COPY --from=builder /build/backend/core-business-service/target/*.jar app.jar
 
 # Создаем папку логов + устанавливаем wget для healthcheck
 RUN chown spring:spring app.jar && \

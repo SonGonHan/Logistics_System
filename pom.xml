@@ -24,6 +24,7 @@
         <module>backend/shared-library</module>
         <module>backend/db-migration</module>
         <module>backend/user-auth-service</module>
+        <module>backend/core-business-service</module>
     </modules>
 
     <properties>
