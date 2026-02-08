@@ -1,6 +1,7 @@
 package com.logistics.shared.pricing_rule.persistence;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 /**
  * Spring Data JPA репозиторий для правил ценообразования.
@@ -11,5 +12,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
  *
  * @see PricingRuleEntity JPA-сущность
  */
+@Repository
 public interface PricingRuleJpaRepository extends JpaRepository<PricingRuleEntity, Long> {
 }

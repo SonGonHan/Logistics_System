@@ -1,0 +1,1 @@
+package com.logistics.corebusiness.waybill.application.port.out;

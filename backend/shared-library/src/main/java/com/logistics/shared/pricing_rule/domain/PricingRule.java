@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 /**
  * Доменная модель правила ценообразования.
@@ -42,12 +42,12 @@ public class PricingRule {
 
     private BigDecimal pricePerKg;
 
-    private LocalDateTime effectiveFrom;
+    private LocalDate effectiveFrom;
 
-    private LocalDateTime effectiveTo;
+    private LocalDate effectiveTo;
 
     public boolean isActive() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDate now = LocalDate.now();
         if (effectiveFrom != null && now.isBefore(effectiveFrom)) return false;
         if (effectiveTo != null && now.isAfter(effectiveTo)) return false;
         return true;

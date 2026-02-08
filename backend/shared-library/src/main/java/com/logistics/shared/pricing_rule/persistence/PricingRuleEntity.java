@@ -8,7 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 /**
  * JPA-сущность для правила ценообразования.
@@ -69,8 +69,8 @@ public class PricingRuleEntity {
     private BigDecimal pricePerKg;
 
     @Column(name = "effective_from")
-    private LocalDateTime effectiveFrom;
+    private LocalDate effectiveFrom;
 
     @Column(name = "effective_to")
-    private LocalDateTime effectiveTo;
+    private LocalDate effectiveTo;
 }
