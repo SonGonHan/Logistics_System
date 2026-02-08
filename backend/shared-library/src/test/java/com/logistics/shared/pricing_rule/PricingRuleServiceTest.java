@@ -156,7 +156,7 @@ class PricingRuleServiceTest {
         when(mapper.toDomain(any(PricingRuleEntity.class))).thenReturn(testDomain);
 
         // When
-        Optional<PricingRule> result = service.findSuitableRule(new BigDecimal("7.5"), DeliveryZone.INTERNATIONAL);
+        Optional<PricingRule> result = service.findSuitableRule(new BigDecimal("7.5"), DeliveryZone.REGIONAL);
 
         // Then
         assertThat(result).isEmpty();
@@ -182,7 +182,7 @@ class PricingRuleServiceTest {
 
         PricingRule inactiveRule = PricingRule.builder()
                 .id(3L)
-                .deliveryZone(DeliveryZone.INTERNATIONAL)
+                .deliveryZone(DeliveryZone.REGIONAL)
                 .effectiveFrom(LocalDateTime.now().plusDays(1))
                 .effectiveTo(LocalDateTime.now().plusDays(90))
                 .build();

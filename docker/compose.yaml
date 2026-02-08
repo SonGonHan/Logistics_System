@@ -35,6 +35,9 @@ services:
     image: postgres:16-alpine
     container_name: logistics-postgres
     restart: unless-stopped
+    profiles:
+      - all
+      - db
 
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
@@ -68,6 +71,10 @@ services:
   redis:
     image: redis:7-alpine
     container_name: logistics-redis
+    profiles:
+      - all
+      - db
+    
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes
@@ -88,7 +95,11 @@ services:
     build:
       context: ..
       dockerfile: backend/db-migration/Dockerfile
-
+    
+    profiles:
+      - all
+      - db
+    
     container_name: logistics-db-migration
     restart: "no"
 
@@ -121,6 +132,10 @@ services:
       context: ..
       dockerfile: backend/user-auth-service/Dockerfile
 
+    profiles:
+      - all
+      - backend
+        
     container_name: logistics-user-auth-service
     restart: unless-stopped
 
@@ -188,6 +203,10 @@ services:
     build:
       context: ..
       dockerfile: backend/core-business-service/Dockerfile
+    
+    profiles:
+      - all
+      - backend
 
     container_name: logistics-core-business-service
     restart: unless-stopped
@@ -251,17 +270,21 @@ services:
   web-frontend:
     build:
       context: ../frontend
-      dockerfile: Dockerfile.dev  # <-- Используем dev-версию
+      dockerfile: Dockerfile.dev
+      
+    profiles:
+      - all
+      - frontend
+    
     container_name: logistics-web-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"  # <-- Vite/CRA порт (обычно 3000 или 5173), а не 80
+      - "3000:3000"
     volumes:
-      - ../frontend/src:/app/src     # <-- Прокидываем исходники
-      - ../frontend/public:/app/public # <-- Если есть public, его тоже полезно
-      - /app/node_modules            # <-- Изолируем node_modules контейнера
+      - ../frontend/src:/app/src     
+      - ../frontend/public:/app/public
+      - /app/node_modules            
 
-    # Чтобы корректно работал Hot Reload в Docker (особенно Vite)
     environment:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
@@ -280,6 +303,10 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
     container_name: logistics-elasticsearch
     restart: unless-stopped
+    
+    profiles:
+      - all
+      - logs
 
     environment:
       - node.name=elasticsearch
@@ -320,6 +347,10 @@ services:
     image: docker.elastic.co/kibana/kibana:8.11.3
     container_name: logistics-kibana
     restart: unless-stopped
+    
+    profiles:
+      - all
+      - logs
 
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
@@ -359,6 +390,11 @@ services:
   filebeat:
     image: docker.elastic.co/beats/filebeat:8.11.3
     container_name: logistics-filebeat
+    
+    profiles:
+      - all
+      - logs
+    
     restart: unless-stopped
     user: root
 
@@ -402,6 +438,10 @@ services:
     image: grafana/grafana:10.2.3
     container_name: logistics-grafana
     restart: unless-stopped
+        
+    profiles:
+      - all
+      - logs
 
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}

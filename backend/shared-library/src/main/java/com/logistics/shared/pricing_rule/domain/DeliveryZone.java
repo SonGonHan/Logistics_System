@@ -15,6 +15,8 @@ package com.logistics.shared.pricing_rule.domain;
  */
 public enum DeliveryZone {
     CITY,
+    SUBURBAN,
     INTERCITY,
+    REGIONAL,
     INTERNATIONAL
 }
