@@ -1,4 +1,3 @@
--- V3__insert_audit_action_types.sql
 -- Заполнение справочника типов действий для журнала аудита
 
 -- Категория: Authentication
@@ -133,4 +132,5 @@ INSERT INTO shared_data.audit_action_types (action_type_id, action_name, categor
                                                                                                     (80, 'GEOLOCATION_UPDATE', 'Tracking', 'Передача GPS-координат курьером/водителем')
     ON CONFLICT (action_type_id) DO NOTHING;
 
-SELECT setval('shared_data.audit_action_types_action_type_id_seq', (SELECT MAX(action_type_id) FROM shared_data.audit_action_types));
+
+SELECT setval('shared_data.audit_action_types_action_type_id_seq', (SELECT COALESCE(MAX(action_type_id), 0) + 1 FROM shared_data.audit_action_types), false);
