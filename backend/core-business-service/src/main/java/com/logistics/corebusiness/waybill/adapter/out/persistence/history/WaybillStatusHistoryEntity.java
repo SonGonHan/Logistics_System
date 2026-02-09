@@ -1,13 +1,30 @@
 package com.logistics.corebusiness.waybill.adapter.out.persistence.history;
 
 import com.logistics.corebusiness.waybill.domain.WaybillStatus;
+import com.logistics.corebusiness.waybill.domain.WaybillStatusHistory;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 /**
- * JPA сущность для таблицы waybill_service.waybill_status_history.
+ * JPA сущность для хранения истории изменений статусов накладных в БД.
+ *
+ * <h2>Таблица в БД</h2>
+ * Schema: waybill_service
+ * Table: waybill_status_history
+ *
+ * Индексы: waybill_id, changed_at, facility_id
+ *
+ * <h2>Важные особенности</h2>
+ * - Таблица только для добавления (append-only), удаления/изменения не предусмотрены
+ * - facility_id и changedBy могут быть NULL (для системных изменений)
+ * - notes может содержать произвольный текст (например, причину отмены)
+ * - status маппится через @Enumerated(STRING) с CHECK constraint в БД
+ *
+ * @see WaybillStatusHistoryJpaRepository для работы с БД
+ * @see WaybillStatusHistoryPersistenceMapper для преобразования Domain ↔ Entity
+ * @see WaybillStatusHistory для доменной модели
  */
 @Entity
 @Table(

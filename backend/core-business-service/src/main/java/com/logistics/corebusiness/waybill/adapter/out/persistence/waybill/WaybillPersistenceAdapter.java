@@ -10,7 +10,28 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Адаптер для работы с репозиторием накладных через JPA.
+ * Адаптер, реализующий интерфейс WaybillRepository для JPA.
+ *
+ * <h2>Паттерн</h2>
+ * Это реализация Adapter паттерна:
+ * - Интерфейс WaybillRepository определяет контракт
+ * - WaybillPersistenceAdapter реализует этот контракт с помощью JPA
+ * - Бизнес-логика зависит от интерфейса, а не от реализации
+ *
+ * <h2>Преимущества</h2>
+ * - Если позже нужна другая БД (MongoDB, Redis), создаем новый адаптер
+ * - Бизнес-логика не меняется
+ * - Легче тестировать (подменить mock-адаптер)
+ *
+ * <h2>Ответственность</h2>
+ * - Преобразование Domain ↔ Entity через WaybillPersistenceMapper
+ * - Делегирование операций в WaybillJpaRepository
+ * - Маппинг результатов обратно в доменные объекты
+ *
+ * @implements WaybillRepository
+ * @see WaybillRepository для контракта
+ * @see WaybillJpaRepository для JPA работы
+ * @see WaybillPersistenceMapper для преобразований
  */
 @Component
 @RequiredArgsConstructor

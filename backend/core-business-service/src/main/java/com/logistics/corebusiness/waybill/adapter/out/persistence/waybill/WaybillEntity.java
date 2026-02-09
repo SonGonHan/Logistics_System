@@ -1,6 +1,7 @@
 package com.logistics.corebusiness.waybill.adapter.out.persistence.waybill;
 
 import com.logistics.corebusiness.waybill.domain.Dimensions;
+import com.logistics.corebusiness.waybill.domain.Waybill;
 import com.logistics.corebusiness.waybill.domain.WaybillStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -10,7 +11,24 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * JPA сущность для таблицы waybill_service.waybills.
+ * JPA сущность для хранения накладных в БД.
+ *
+ * <h2>Таблица в БД</h2>
+ * Schema: waybill_service
+ * Table: waybills
+ *
+ * Уникальность: waybill_number UNIQUE
+ * Индексы: waybill_number, waybill_creator_id, sender_user_id, recipient_user_id, waybill_status, created_at
+ *
+ * <h2>Важные особенности</h2>
+ * - dimensions хранится как @Embedded (3 отдельные колонки: length_cm, width_cm, height_cm)
+ * - Все BigDecimal поля (вес, цена, размеры) имеют строгую precision и scale
+ * - waybill_status маппится через @Enumerated(STRING) с CHECK constraint в БД
+ * - created_at автоматически заполняется через @CreatedDate
+ *
+ * @see WaybillJpaRepository для работы с БД
+ * @see WaybillPersistenceMapper для преобразования Domain ↔ Entity
+ * @see Waybill для доменной модели
  */
 @Entity
 @Table(

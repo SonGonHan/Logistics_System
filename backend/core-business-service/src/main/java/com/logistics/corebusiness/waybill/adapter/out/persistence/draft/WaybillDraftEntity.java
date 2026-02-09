@@ -2,6 +2,7 @@ package com.logistics.corebusiness.waybill.adapter.out.persistence.draft;
 
 import com.logistics.corebusiness.waybill.domain.Dimensions;
 import com.logistics.corebusiness.waybill.domain.DraftStatus;
+import com.logistics.corebusiness.waybill.domain.WaybillDraft;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -10,7 +11,24 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * JPA сущность для таблицы waybill_service.waybill_drafts.
+ * JPA сущность для хранения черновиков накладных в БД.
+ *
+ * <h2>Таблица в БД</h2>
+ * Schema: waybill_service
+ * Table: waybill_drafts
+ *
+ * Уникальность: barcode UNIQUE
+ * Индексы: barcode, draft_creator_id, sender_user_id, recipient_user_id, draft_status, created_at
+ *
+ * <h2>Важные особенности</h2>
+ * - dimensions хранится как @Embedded (3 колонки: length_declared_cm, width_declared_cm, height_declared_cm)
+ * - weight_declared и estimatedPrice могут быть NULL (опциональные при создании черновика)
+ * - draft_status маппится через @Enumerated(STRING) с CHECK constraint в БД
+ * - created_at автоматически заполняется через @CreatedDate
+ *
+ * @see WaybillDraftJpaRepository для работы с БД
+ * @see WaybillDraftPersistenceMapper для преобразования Domain ↔ Entity
+ * @see WaybillDraft для доменной модели
  */
 @Entity
 @Table(

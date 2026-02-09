@@ -4,7 +4,24 @@ import com.logistics.corebusiness.waybill.domain.WaybillDraft;
 import org.springframework.stereotype.Component;
 
 /**
- * Маппер для преобразования между WaybillDraft (domain) и WaybillDraftEntity (JPA).
+ * Маппер для преобразования между доменной моделью и JPA сущностью черновика.
+ *
+ * <h2>Назначение</h2>
+ * Обеспечивает изоляцию доменного слоя от деталей JPA:
+ * - Доменная модель (WaybillDraft) не знает о JPA аннотациях
+ * - JPA сущность (WaybillDraftEntity) не попадает в бизнес-логику
+ *
+ * <h2>Методы</h2>
+ * - toEntity(WaybillDraft) - Преобразование Domain → Entity (для сохранения в БД)
+ * - toDomain(WaybillDraftEntity) - Преобразование Entity → Domain (для чтения из БД)
+ *
+ * <h2>Особенности</h2>
+ * - Dimensions (Value Object) копируется напрямую (record)
+ * - Все enum-ы (DraftStatus) копируются без преобразований
+ * - BigDecimal копируются по значению (immutable)
+ *
+ * @see WaybillDraft для доменной модели
+ * @see WaybillDraftEntity для JPA сущности
  */
 @Component
 public class WaybillDraftPersistenceMapper {

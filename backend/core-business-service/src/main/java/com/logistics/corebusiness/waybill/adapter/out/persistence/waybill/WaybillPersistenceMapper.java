@@ -4,7 +4,24 @@ import com.logistics.corebusiness.waybill.domain.Waybill;
 import org.springframework.stereotype.Component;
 
 /**
- * Маппер для преобразования между Waybill (domain) и WaybillEntity (JPA).
+ * Маппер для преобразования между доменной моделью и JPA сущностью накладной.
+ *
+ * <h2>Назначение</h2>
+ * Обеспечивает изоляцию доменного слоя от деталей JPA:
+ * - Доменная модель (Waybill) не знает о JPA аннотациях
+ * - JPA сущность (WaybillEntity) не попадает в бизнес-логику
+ *
+ * <h2>Методы</h2>
+ * - toEntity(Waybill) - Преобразование Domain → Entity (для сохранения в БД)
+ * - toDomain(WaybillEntity) - Преобразование Entity → Domain (для чтения из БД)
+ *
+ * <h2>Особенности</h2>
+ * - Dimensions (Value Object) копируется напрямую (record)
+ * - Все enum-ы (WaybillStatus) копируются без преобразований
+ * - BigDecimal копируются по значению (immutable)
+ *
+ * @see Waybill для доменной модели
+ * @see WaybillEntity для JPA сущности
  */
 @Component
 public class WaybillPersistenceMapper {

@@ -6,10 +6,32 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * Value Object representing package dimensions (length x width x height).
- * Immutable and contains business logic for volume and volumetric weight calculations.
- * <p>
- * Mapped as @Embeddable to three separate database columns for SQL queryability.
+ * Value Object, представляющий габариты посылки (длина × ширина × высота).
+ *
+ * <h2>Назначение</h2>
+ * Неизменяемый объект для хранения размеров посылки в сантиметрах.
+ * Содержит бизнес-логику для расчета объема и объемного веса.
+ *
+ * <h2>Применение</h2>
+ * Габариты используются для:
+ * - Расчета объемного веса (важно для ценообразования)
+ * - Проверки ограничений по размерам в тарифных правилах
+ * - Оптимизации размещения посылок в транспорте
+ *
+ * <h2>Расчет объемного веса</h2>
+ * volumetricWeight = (length × width × height) / divisor
+ * - Для международной доставки: divisor = 5000
+ * - Для внутренней доставки: divisor = 6000
+ * К оплате берется max(actualWeight, volumetricWeight)
+ *
+ * <h2>Реализация</h2>
+ * - Record (неизменяемый)
+ * - @Embeddable (сохраняется в 3 отдельных колонках БД для SQL-запросов)
+ * - Валидация в компактном конструкторе (все значения > 0)
+ * - Принцип "все или ничего": либо все null, либо все заполнены
+ *
+ * @see Waybill для использования в накладных
+ * @see WaybillDraft для использования в черновиках
  */
 @Embeddable
 public record Dimensions(
