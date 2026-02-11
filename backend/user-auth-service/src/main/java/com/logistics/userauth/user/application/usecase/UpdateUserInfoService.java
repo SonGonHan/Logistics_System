@@ -23,7 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
  * При неверном {@code oldPassword} выбрасывает {@link org.springframework.security.authentication.BadCredentialsException}.
  *
  * <h2>Смена телефона</h2>
- * Если телефон меняется, требует подтверждения номера через {@link SmsRepository#isPhoneVerified(String)}.
+ * Если телефон меняется, требует подтверждения номера через {@link SmsRepository#isVerified(String)}.
  * При неподтвержденном номере выбрасывает {@link com.logistics.userauth.auth.jwt.application.exception.PhoneNotVerifiedException}.
  *
  * <h2>Persistence</h2>
@@ -35,8 +35,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class UpdateUserInfoService implements UpdateUserInfoUseCase {
 
     private final UserRepository userRepository;
-    private final SmsRepository smsRepository;
-    private final PasswordEncoder passwordEncoder;
 
     @Override
     public UserInfoResponse update(UpdateUserInfoCommand command) {

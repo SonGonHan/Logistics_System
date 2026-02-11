@@ -1,8 +1,8 @@
 package com.logistics.corebusiness.waybill.adapter.out.persistence.draft;
 
 import com.logistics.corebusiness.waybill.domain.Dimensions;
+import com.logistics.corebusiness.waybill.domain.Draft;
 import com.logistics.corebusiness.waybill.domain.DraftStatus;
-import com.logistics.corebusiness.waybill.domain.WaybillDraft;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,14 +12,14 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@DisplayName("WaybillDraftPersistenceMapper: юнит-тесты")
-class WaybillDraftPersistenceMapperTest {
+@DisplayName("DraftPersistenceMapper: юнит-тесты")
+class DraftPersistenceMapperTest {
 
-    private WaybillDraftPersistenceMapper mapper;
+    private DraftPersistenceMapper mapper;
 
     @BeforeEach
     void setUp() {
-        mapper = new WaybillDraftPersistenceMapper();
+        mapper = new DraftPersistenceMapper();
     }
 
     @Test
@@ -32,7 +32,7 @@ class WaybillDraftPersistenceMapperTest {
                 BigDecimal.valueOf(45.00)
         );
 
-        WaybillDraft domain = WaybillDraft.builder()
+        Draft domain = Draft.builder()
                 .id(1L)
                 .barcode("BC-2024-000001")
                 .draftCreatorId(100L)
@@ -48,7 +48,7 @@ class WaybillDraftPersistenceMapperTest {
                 .build();
 
         // When
-        WaybillDraftEntity entity = mapper.toEntity(domain);
+        DraftEntity entity = mapper.toEntity(domain);
 
         // Then
         assertThat(entity).isNotNull();
@@ -76,7 +76,7 @@ class WaybillDraftPersistenceMapperTest {
                 BigDecimal.valueOf(35.00)
         );
 
-        WaybillDraftEntity entity = WaybillDraftEntity.builder()
+        DraftEntity entity = DraftEntity.builder()
                 .id(2L)
                 .barcode("BC-2024-000002")
                 .draftCreatorId(101L)
@@ -92,7 +92,7 @@ class WaybillDraftPersistenceMapperTest {
                 .build();
 
         // When
-        WaybillDraft domain = mapper.toDomain(entity);
+        Draft domain = mapper.toDomain(entity);
 
         // Then
         assertThat(domain).isNotNull();
@@ -114,7 +114,7 @@ class WaybillDraftPersistenceMapperTest {
     @DisplayName("Должен корректно преобразовать черновик с null значениями")
     void shouldMapDraftWithNullValues() {
         // Given
-        WaybillDraft domain = WaybillDraft.builder()
+        Draft domain = Draft.builder()
                 .id(3L)
                 .barcode("BC-2024-000003")
                 .draftCreatorId(102L)
@@ -130,7 +130,7 @@ class WaybillDraftPersistenceMapperTest {
                 .build();
 
         // When
-        WaybillDraftEntity entity = mapper.toEntity(domain);
+        DraftEntity entity = mapper.toEntity(domain);
 
         // Then
         assertThat(entity).isNotNull();
@@ -146,7 +146,7 @@ class WaybillDraftPersistenceMapperTest {
     void shouldMapAllDraftStatuses() {
         for (DraftStatus status : DraftStatus.values()) {
             // Given
-            WaybillDraft domain = WaybillDraft.builder()
+            Draft domain = Draft.builder()
                     .id(1L)
                     .barcode("BC-2024-TEST")
                     .draftCreatorId(100L)
@@ -158,8 +158,8 @@ class WaybillDraftPersistenceMapperTest {
                     .build();
 
             // When
-            WaybillDraftEntity entity = mapper.toEntity(domain);
-            WaybillDraft mappedBack = mapper.toDomain(entity);
+            DraftEntity entity = mapper.toEntity(domain);
+            Draft mappedBack = mapper.toDomain(entity);
 
             // Then
             assertThat(mappedBack.getDraftStatus()).isEqualTo(status);

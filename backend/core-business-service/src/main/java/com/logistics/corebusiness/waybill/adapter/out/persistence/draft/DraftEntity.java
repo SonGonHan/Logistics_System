@@ -1,8 +1,8 @@
 package com.logistics.corebusiness.waybill.adapter.out.persistence.draft;
 
 import com.logistics.corebusiness.waybill.domain.Dimensions;
+import com.logistics.corebusiness.waybill.domain.Draft;
 import com.logistics.corebusiness.waybill.domain.DraftStatus;
-import com.logistics.corebusiness.waybill.domain.WaybillDraft;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -26,9 +26,9 @@ import java.time.LocalDateTime;
  * - draft_status маппится через @Enumerated(STRING) с CHECK constraint в БД
  * - created_at автоматически заполняется через @CreatedDate
  *
- * @see WaybillDraftJpaRepository для работы с БД
- * @see WaybillDraftPersistenceMapper для преобразования Domain ↔ Entity
- * @see WaybillDraft для доменной модели
+ * @see DraftJpaRepository для работы с БД
+ * @see DraftPersistenceMapper для преобразования Domain ↔ Entity
+ * @see Draft для доменной модели
  */
 @Entity
 @Table(
@@ -51,7 +51,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class WaybillDraftEntity {
+public class DraftEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "draft_seq")

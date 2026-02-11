@@ -11,15 +11,15 @@ import java.util.Optional;
  * Spring Data JPA репозиторий для работы с черновиками накладных.
  */
 @Repository
-public interface WaybillDraftJpaRepository extends JpaRepository<WaybillDraftEntity, Long> {
+public interface DraftJpaRepository extends JpaRepository<DraftEntity, Long> {
 
-    Optional<WaybillDraftEntity> findByBarcode(String barcode);
+    Optional<DraftEntity> findByBarcode(String barcode);
 
-    List<WaybillDraftEntity> findBySenderUserId(Long senderUserId);
+    List<DraftEntity> findBySenderUserId(Long senderUserId);
 
-    List<WaybillDraftEntity> findByRecipientUserId(Long recipientUserId);
+    List<DraftEntity> findByRecipientUserId(Long recipientUserId);
 
-    List<WaybillDraftEntity> findByDraftStatus(DraftStatus status);
+    List<DraftEntity> findByDraftStatus(DraftStatus status);
 
-    List<WaybillDraftEntity> findByDraftCreatorId(Long creatorId);
+    List<DraftEntity> findByDraftCreatorId(Long creatorId);
 }

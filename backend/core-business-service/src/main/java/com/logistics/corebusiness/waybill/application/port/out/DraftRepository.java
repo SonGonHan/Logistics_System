@@ -1,8 +1,8 @@
 package com.logistics.corebusiness.waybill.application.port.out;
 
-import com.logistics.corebusiness.waybill.adapter.out.persistence.draft.WaybillDraftPersistenceAdapter;
+import com.logistics.corebusiness.waybill.adapter.out.persistence.draft.DraftPersistenceAdapter;
 import com.logistics.corebusiness.waybill.domain.DraftStatus;
-import com.logistics.corebusiness.waybill.domain.WaybillDraft;
+import com.logistics.corebusiness.waybill.domain.Draft;
 
 import java.util.List;
 import java.util.Optional;
@@ -15,7 +15,7 @@ import java.util.Optional;
  * не привязываясь к конкретной реализации (JPA, MongoDB и т.д.).
  *
  * <h2>Реализации</h2>
- * - WaybillDraftPersistenceAdapter (текущая - JPA)
+ * - DraftPersistenceAdapter (текущая - JPA)
  * - Может быть заменена на другую реализацию при необходимости
  *
  * <h2>Методы</h2>
@@ -28,24 +28,24 @@ import java.util.Optional;
  * - findByDraftStatus(status) - Все черновики с определенным статусом
  * - findByDraftCreatorId(id) - Все черновики, созданные определенным пользователем
  *
- * @see WaybillDraftPersistenceAdapter для реализации на JPA
- * @see WaybillDraft для доменной сущности
+ * @see DraftPersistenceAdapter для реализации на JPA
+ * @see Draft для доменной сущности
  */
-public interface WaybillDraftRepository {
+public interface DraftRepository {
 
-    WaybillDraft save(WaybillDraft draft);
+    Draft save(Draft draft);
 
-    void delete(WaybillDraft draft);
+    void delete(Draft draft);
 
-    Optional<WaybillDraft> findById(Long id);
+    Optional<Draft> findById(Long id);
 
-    Optional<WaybillDraft> findByBarcode(String barcode);
+    Optional<Draft> findByBarcode(String barcode);
 
-    List<WaybillDraft> findBySenderUserId(Long senderUserId);
+    List<Draft> findBySenderUserId(Long senderUserId);
 
-    List<WaybillDraft> findByRecipientUserId(Long recipientUserId);
+    List<Draft> findByRecipientUserId(Long recipientUserId);
 
-    List<WaybillDraft> findByDraftStatus(DraftStatus status);
+    List<Draft> findByDraftStatus(DraftStatus status);
 
-    List<WaybillDraft> findByDraftCreatorId(Long creatorId);
+    List<Draft> findByDraftCreatorId(Long creatorId);
 }

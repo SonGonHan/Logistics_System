@@ -7,7 +7,7 @@
  * <p>Содержит:
  * <ul>
  *   <li><b>WaybillRepository</b> - работа с подтвержденными накладными</li>
- *   <li><b>WaybillDraftRepository</b> - работа с черновиками</li>
+ *   <li><b>DraftRepository</b> - работа с черновиками</li>
  *   <li><b>WaybillStatusHistoryRepository</b> - работа с историей статусов</li>
  * </ul>
  *

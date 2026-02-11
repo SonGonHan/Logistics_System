@@ -14,7 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -48,8 +49,8 @@ class PricingRuleServiceTest {
                 .weightMax(new BigDecimal("10.0"))
                 .basePrice(new BigDecimal("200.00"))
                 .pricePerKg(new BigDecimal("50.00"))
-                .effectiveFrom(LocalDateTime.now().minusDays(1))
-                .effectiveTo(LocalDateTime.now().plusDays(30))
+                .effectiveFrom(LocalDate.now().minusDays(1))
+                .effectiveTo(LocalDate.now().plusDays(30))
                 .build();
 
         testDomain = PricingRule.builder()
@@ -60,8 +61,8 @@ class PricingRuleServiceTest {
                 .weightMax(new BigDecimal("10.0"))
                 .basePrice(new BigDecimal("200.00"))
                 .pricePerKg(new BigDecimal("50.00"))
-                .effectiveFrom(LocalDateTime.now().minusDays(1))
-                .effectiveTo(LocalDateTime.now().plusDays(30))
+                .effectiveFrom(LocalDate.now().minusDays(1))
+                .effectiveTo(LocalDate.now().plusDays(30))
                 .build();
     }
 
@@ -105,8 +106,8 @@ class PricingRuleServiceTest {
                 .weightMax(new BigDecimal("10.0"))
                 .basePrice(new BigDecimal("200.00"))
                 .pricePerKg(new BigDecimal("50.00"))
-                .effectiveFrom(LocalDateTime.now().plusDays(1))
-                .effectiveTo(LocalDateTime.now().plusDays(30))
+                .effectiveFrom(LocalDate.now().plusDays(1))
+                .effectiveTo(LocalDate.now().plusDays(30))
                 .build();
 
         when(repository.findById(1L)).thenReturn(Optional.of(testEntity));
@@ -169,22 +170,22 @@ class PricingRuleServiceTest {
         PricingRule activeRule1 = PricingRule.builder()
                 .id(1L)
                 .deliveryZone(DeliveryZone.CITY)
-                .effectiveFrom(LocalDateTime.now().minusDays(1))
-                .effectiveTo(LocalDateTime.now().plusDays(30))
+                .effectiveFrom(LocalDate.now().minusDays(1))
+                .effectiveTo(LocalDate.now().plusDays(30))
                 .build();
 
         PricingRule activeRule2 = PricingRule.builder()
                 .id(2L)
                 .deliveryZone(DeliveryZone.INTERCITY)
-                .effectiveFrom(LocalDateTime.now().minusDays(5))
-                .effectiveTo(LocalDateTime.now().plusDays(60))
+                .effectiveFrom(LocalDate.now().minusDays(5))
+                .effectiveTo(LocalDate.now().plusDays(60))
                 .build();
 
         PricingRule inactiveRule = PricingRule.builder()
                 .id(3L)
                 .deliveryZone(DeliveryZone.REGIONAL)
-                .effectiveFrom(LocalDateTime.now().plusDays(1))
-                .effectiveTo(LocalDateTime.now().plusDays(90))
+                .effectiveFrom(LocalDate.now().plusDays(1))
+                .effectiveTo(LocalDate.now().plusDays(90))
                 .build();
 
         List<PricingRuleEntity> entities = Arrays.asList(

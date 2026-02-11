@@ -31,7 +31,7 @@ import java.math.RoundingMode;
  * - Принцип "все или ничего": либо все null, либо все заполнены
  *
  * @see Waybill для использования в накладных
- * @see WaybillDraft для использования в черновиках
+ * @see Draft для использования в черновиках
  */
 @Embeddable
 public record Dimensions(

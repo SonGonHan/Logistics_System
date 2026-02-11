@@ -12,7 +12,7 @@ package com.logistics.corebusiness.waybill.domain;
  * - CONFIRMED: Подтвержден (создана накладная Waybill)
  * - CANCELLED: Отменен до приемки
  *
- * @see WaybillDraft для черновика
+ * @see Draft для черновика
  * @see Waybill для подтвержденной накладной
  */
 public enum DraftStatus {

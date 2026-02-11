@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,8 +30,8 @@ class PricingRuleJpaRepositoryIntegrationTest {
                 .weightMax(new BigDecimal("10.0"))
                 .basePrice(new BigDecimal("200.00"))
                 .pricePerKg(new BigDecimal("50.00"))
-                .effectiveFrom(LocalDateTime.now().minusDays(1))
-                .effectiveTo(LocalDateTime.now().plusDays(30))
+                .effectiveFrom(LocalDate.now().minusDays(1))
+                .effectiveTo(LocalDate.now().plusDays(30))
                 .build();
 
         // Сохраняем и получаем обратно экземпляр с ID

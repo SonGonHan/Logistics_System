@@ -7,7 +7,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,7 +25,7 @@ class PricingRuleMapperTest {
     @DisplayName("Должен корректно преобразовать Entity в Domain")
     void shouldMapEntityToDomain() {
         // Given
-        LocalDateTime now = LocalDateTime.now();
+        LocalDate now = LocalDate.now();
         PricingRuleEntity entity = PricingRuleEntity.builder()
                 .id(1L)
                 .ruleName("Городская доставка до 10 кг")
@@ -58,7 +58,7 @@ class PricingRuleMapperTest {
     @DisplayName("Должен корректно преобразовать Domain в Entity")
     void shouldMapDomainToEntity() {
         // Given
-        LocalDateTime now = LocalDateTime.now();
+        LocalDate now = LocalDate.now();
         PricingRule domain = PricingRule.builder()
                 .id(2L)
                 .ruleName("Международная доставка")

@@ -34,7 +34,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class WaybillDraft {
+public class Draft {
 
     private Long id;
     private String barcode;

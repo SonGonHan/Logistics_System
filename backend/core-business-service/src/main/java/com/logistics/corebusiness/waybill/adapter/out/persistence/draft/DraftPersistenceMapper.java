@@ -1,6 +1,6 @@
 package com.logistics.corebusiness.waybill.adapter.out.persistence.draft;
 
-import com.logistics.corebusiness.waybill.domain.WaybillDraft;
+import com.logistics.corebusiness.waybill.domain.Draft;
 import org.springframework.stereotype.Component;
 
 /**
@@ -8,26 +8,26 @@ import org.springframework.stereotype.Component;
  *
  * <h2>Назначение</h2>
  * Обеспечивает изоляцию доменного слоя от деталей JPA:
- * - Доменная модель (WaybillDraft) не знает о JPA аннотациях
- * - JPA сущность (WaybillDraftEntity) не попадает в бизнес-логику
+ * - Доменная модель (Draft) не знает о JPA аннотациях
+ * - JPA сущность (DraftEntity) не попадает в бизнес-логику
  *
  * <h2>Методы</h2>
- * - toEntity(WaybillDraft) - Преобразование Domain → Entity (для сохранения в БД)
- * - toDomain(WaybillDraftEntity) - Преобразование Entity → Domain (для чтения из БД)
+ * - toEntity(Draft) - Преобразование Domain → Entity (для сохранения в БД)
+ * - toDomain(DraftEntity) - Преобразование Entity → Domain (для чтения из БД)
  *
  * <h2>Особенности</h2>
  * - Dimensions (Value Object) копируется напрямую (record)
  * - Все enum-ы (DraftStatus) копируются без преобразований
  * - BigDecimal копируются по значению (immutable)
  *
- * @see WaybillDraft для доменной модели
- * @see WaybillDraftEntity для JPA сущности
+ * @see Draft для доменной модели
+ * @see DraftEntity для JPA сущности
  */
 @Component
-public class WaybillDraftPersistenceMapper {
+public class DraftPersistenceMapper {
 
-    public WaybillDraftEntity toEntity(WaybillDraft domain) {
-        return WaybillDraftEntity.builder()
+    public DraftEntity toEntity(Draft domain) {
+        return DraftEntity.builder()
                 .id(domain.getId())
                 .barcode(domain.getBarcode())
                 .draftCreatorId(domain.getDraftCreatorId())
@@ -43,8 +43,8 @@ public class WaybillDraftPersistenceMapper {
                 .build();
     }
 
-    public WaybillDraft toDomain(WaybillDraftEntity entity) {
-        return WaybillDraft.builder()
+    public Draft toDomain(DraftEntity entity) {
+        return Draft.builder()
                 .id(entity.getId())
                 .barcode(entity.getBarcode())
                 .draftCreatorId(entity.getDraftCreatorId())
