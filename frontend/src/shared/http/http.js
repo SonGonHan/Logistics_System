@@ -13,7 +13,7 @@ async function rawFetch(path, options) {
         if (accessToken) headers.Authorization = `Bearer ${accessToken}`; // [file:21]
     }
 
-    const res = await fetch(`${config.apiBaseUrl}${path}`, {
+    const res = await fetch(`${config.userAuthApiUrl}${path}`, {
         method,
         headers,
         body: body ? JSON.stringify(body) : undefined,

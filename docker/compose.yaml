@@ -38,6 +38,7 @@ services:
     profiles:
       - all
       - db
+      - backend
 
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
@@ -74,6 +75,7 @@ services:
     profiles:
       - all
       - db
+      - backend
     
     ports:
       - "6379:6379"
@@ -99,6 +101,7 @@ services:
     profiles:
       - all
       - db
+      - backend
     
     container_name: logistics-db-migration
     restart: "no"
@@ -166,7 +169,7 @@ services:
 
       # Timezone
       TZ: Europe/Moscow
-
+  
     ports:
       - "${USER_AUTH_SERVICE_PORT:-8081}:8080"
 
@@ -290,9 +293,6 @@ services:
       - WATCHPACK_POLLING=true
       - WDS_SOCKET_PORT=0
 
-    depends_on:
-      user-auth-service:
-        condition: service_started
     networks:
       - logistics-network
 

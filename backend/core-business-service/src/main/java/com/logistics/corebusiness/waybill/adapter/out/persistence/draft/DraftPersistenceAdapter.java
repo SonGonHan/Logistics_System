@@ -68,27 +68,27 @@ public class DraftPersistenceAdapter implements DraftRepository {
     public List<Draft> findBySenderUserId(Long senderUserId) {
         return jpaRepository.findBySenderUserId(senderUserId).stream()
                 .map(mapper::toDomain)
-                .collect(Collectors.toList());  // Mutable ArrayList
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Draft> findByRecipientUserId(Long recipientUserId) {
         return jpaRepository.findByRecipientUserId(recipientUserId).stream()
                 .map(mapper::toDomain)
-                .collect(Collectors.toList());  // Mutable ArrayList
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Draft> findByDraftStatus(DraftStatus status) {
         return jpaRepository.findByDraftStatus(status).stream()
                 .map(mapper::toDomain)
-                .collect(Collectors.toList());  // Mutable ArrayList
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Draft> findByDraftCreatorId(Long creatorId) {
         return jpaRepository.findByDraftCreatorId(creatorId).stream()
                 .map(mapper::toDomain)
-                .collect(Collectors.toList());  // Mutable ArrayList
+                .collect(Collectors.toList());
     }
 }

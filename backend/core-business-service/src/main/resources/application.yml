@@ -17,7 +17,7 @@ spring:
     allow-bean-definition-overriding: true
 
 server:
-  port: 8080
+  port: 8082
   servlet:
     context-path: /api/v1
   compression:
@@ -43,6 +43,10 @@ management:
       show-details: always
     metrics:
       enabled: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
 
 logging:
   level:
