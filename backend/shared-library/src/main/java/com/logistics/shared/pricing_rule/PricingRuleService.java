@@ -90,8 +90,6 @@ public class PricingRuleService {
      * @return первое найденное активное правило или Optional.empty()
      */
     public Optional<PricingRule> findSuitableRule(BigDecimal weight, DeliveryZone deliveryZone) {
-        LocalDate today = LocalDate.now();
-
         return repository.findAll().stream()
                 .map(mapper::toDomain)
                 .filter(r -> r.isSuitable(weight, deliveryZone))
