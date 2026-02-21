@@ -3,9 +3,9 @@ package com.logistics.corebusiness.waybill.adapter.in.web;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.logistics.corebusiness.IntegrationTest;
 import com.logistics.corebusiness.waybill.adapter.in.web.dto.CreateDraftRequest;
-import com.logistics.corebusiness.waybill.adapter.in.web.dto.DimensionsDto;
 import com.logistics.corebusiness.waybill.adapter.in.web.dto.UpdateDraftRequest;
 import com.logistics.corebusiness.waybill.application.port.out.DraftRepository;
+import com.logistics.corebusiness.waybill.application.port.out.RecipientUserPort;
 import com.logistics.corebusiness.waybill.domain.Draft;
 import com.logistics.corebusiness.waybill.domain.DraftStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -27,6 +28,8 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -62,6 +65,9 @@ class DraftControllerIntegrationTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @MockBean
+    private RecipientUserPort recipientUserPort;
+
     private static final Long TEST_USER_1 = 1L;
     private static final Long TEST_USER_2 = 2L;
     private static final Long TEST_USER_3 = 3L;
@@ -74,6 +80,8 @@ class DraftControllerIntegrationTest {
         createTestUsers();
         // Создаем pricing rule для тестов
         createTestPricingRule();
+        // Мокаем внешний сервис поиска/создания получателя
+        when(recipientUserPort.findOrCreateByPhone(anyString())).thenReturn(RECIPIENT_USER);
     }
 
     // ===========================
@@ -85,21 +93,13 @@ class DraftControllerIntegrationTest {
     class CreateDraft {
 
         @Test
-        @DisplayName("Должен успешно создать черновик с габаритами")
-        void shouldCreateDraftWithDimensions() throws Exception {
+        @DisplayName("Должен успешно создать черновик")
+        void shouldCreateDraftSuccessfully() throws Exception {
             // Given
-            var dimensions = DimensionsDto.builder()
-                    .length(new BigDecimal("30.5"))
-                    .width(new BigDecimal("40.2"))
-                    .height(new BigDecimal("50.8"))
-                    .build();
-
             var request = CreateDraftRequest.builder()
-                    .recipientUserId(TEST_USER_2)
+                    .recipientPhone("89991234567")
                     .recipientAddress("г. Москва, ул. Тестовая, д. 1, кв. 5")
-                    .weightDeclared(new BigDecimal("2.5"))
                     .pricingRuleId(PRICING_RULE_ID)
-                    .dimensions(dimensions)
                     .build();
 
             // When & Then
@@ -115,40 +115,11 @@ class DraftControllerIntegrationTest {
             assertThat(savedDrafts).hasSize(1);
 
             var savedDraft = savedDrafts.get(0);
-            assertThat(savedDraft.getRecipientUserId()).isEqualTo(TEST_USER_2);
+            assertThat(savedDraft.getRecipientUserId()).isEqualTo(RECIPIENT_USER);
             assertThat(savedDraft.getRecipientAddress()).isEqualTo("г. Москва, ул. Тестовая, д. 1, кв. 5");
-            assertThat(savedDraft.getWeightDeclared()).isEqualByComparingTo("2.5");
-            assertThat(savedDraft.getDimensions()).isNotNull();
-            assertThat(savedDraft.getDimensions().length()).isEqualByComparingTo("30.5");
             assertThat(savedDraft.getBarcode()).isNotNull();
             assertThat(savedDraft.getDraftStatus()).isEqualTo(DraftStatus.PENDING);
             assertThat(savedDraft.getEstimatedPrice()).isNotNull();
-        }
-
-        @Test
-        @DisplayName("Должен успешно создать черновик без габаритов")
-        void shouldCreateDraftWithoutDimensions() throws Exception {
-            // Given
-            var request = CreateDraftRequest.builder()
-                    .recipientUserId(TEST_USER_2)
-                    .recipientAddress("г. Санкт-Петербург, Невский пр., д. 10")
-                    .weightDeclared(new BigDecimal("1.0"))
-                    .pricingRuleId(PRICING_RULE_ID)
-                    .dimensions(null)
-                    .build();
-
-            // When & Then
-            mockMvc.perform(post("/waybills/drafts")
-                            .principal(createMockAuthentication(TEST_USER_1))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andDo(print())
-                    .andExpect(status().isCreated());
-
-            // Проверяем сохранение
-            var savedDrafts = draftRepository.findByDraftCreatorId(TEST_USER_1);
-            assertThat(savedDrafts).hasSize(1);
-            assertThat(savedDrafts.get(0).getDimensions()).isNull();
         }
 
         @Test
@@ -156,11 +127,9 @@ class DraftControllerIntegrationTest {
         void shouldReturn400WhenAddressIsEmpty() throws Exception {
             // Given
             var request = CreateDraftRequest.builder()
-                    .recipientUserId(TEST_USER_2)
+                    .recipientPhone("89991234567")
                     .recipientAddress("")
-                    .weightDeclared(new BigDecimal("2.5"))
                     .pricingRuleId(PRICING_RULE_ID)
-                    .dimensions(null)
                     .build();
 
             // When & Then
@@ -175,38 +144,13 @@ class DraftControllerIntegrationTest {
         }
 
         @Test
-        @DisplayName("Должен вернуть 400 при отрицательном весе")
-        void shouldReturn400WhenWeightIsNegative() throws Exception {
-            // Given
-            var request = CreateDraftRequest.builder()
-                    .recipientUserId(TEST_USER_2)
-                    .recipientAddress("г. Москва, ул. Тестовая, д. 1")
-                    .weightDeclared(new BigDecimal("-1.0"))
-                    .pricingRuleId(PRICING_RULE_ID)
-                    .dimensions(null)
-                    .build();
-
-            // When & Then
-            mockMvc.perform(post("/waybills/drafts")
-                            .principal(createMockAuthentication(TEST_USER_1))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
-                    .andDo(print())
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
-                    .andExpect(jsonPath("$.fields.weightDeclared").exists());
-        }
-
-        @Test
         @DisplayName("Должен вернуть 400 при отсутствии обязательных полей")
         void shouldReturn400WhenMissingRequiredFields() throws Exception {
             // Given
             var request = CreateDraftRequest.builder()
-                    .recipientUserId(null)
+                    .recipientPhone(null)
                     .recipientAddress(null)
-                    .weightDeclared(null)
                     .pricingRuleId(PRICING_RULE_ID)
-                    .dimensions(null)
                     .build();
 
             // When & Then
@@ -217,9 +161,8 @@ class DraftControllerIntegrationTest {
                     .andDo(print())
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.error").value("VALIDATION_FAILED"))
-                    .andExpect(jsonPath("$.fields.recipientUserId").exists())
-                    .andExpect(jsonPath("$.fields.recipientAddress").exists())
-                    .andExpect(jsonPath("$.fields.weightDeclared").exists());
+                    .andExpect(jsonPath("$.fields.recipientPhone").exists())
+                    .andExpect(jsonPath("$.fields.recipientAddress").exists());
         }
     }
 
@@ -324,7 +267,6 @@ class DraftControllerIntegrationTest {
                     .andExpect(jsonPath("$.barcode").value("DRF-123"))
                     .andExpect(jsonPath("$.draftStatus").value("PENDING"))
                     .andExpect(jsonPath("$.recipientUserId").value(RECIPIENT_USER))
-                    .andExpect(jsonPath("$.weightDeclared").value(1.0))
                     .andExpect(jsonPath("$.estimatedPrice").exists())
                     .andExpect(jsonPath("$.createdAt").exists());
         }
@@ -404,19 +346,17 @@ class DraftControllerIntegrationTest {
                             .content(objectMapper.writeValueAsString(updateRequest)))
                     .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.recipientAddress").value("г. Казань, ул. Баумана, д. 20"))
-                    .andExpect(jsonPath("$.weightDeclared").value(1.0)); // Не изменилось
+                    .andExpect(jsonPath("$.recipientAddress").value("г. Казань, ул. Баумана, д. 20"));
         }
 
         @Test
-        @DisplayName("Должен обновить вес и пересчитать цену")
-        void shouldUpdateWeightAndRecalculatePrice() throws Exception {
+        @DisplayName("Должен обновить pricingRuleId и пересчитать цену")
+        void shouldUpdatePricingRuleIdAndRecalculatePrice() throws Exception {
             // Given
             var draft = createDraft(TEST_USER_1, "DRF-UPD-002", DraftStatus.PENDING);
             var originalPrice = draft.getEstimatedPrice();
 
             var updateRequest = UpdateDraftRequest.builder()
-                    .weightDeclared(new BigDecimal("2.5"))
                     .pricingRuleId(PRICING_RULE_ID)
                     .build();
 
@@ -427,41 +367,11 @@ class DraftControllerIntegrationTest {
                             .content(objectMapper.writeValueAsString(updateRequest)))
                     .andDo(print())
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.weightDeclared").value(2.5))
                     .andExpect(jsonPath("$.estimatedPrice").isNumber());
 
             // Проверяем, что цена изменилась
             var updatedDraft = draftRepository.findById(draft.getId()).orElseThrow();
             assertThat(updatedDraft.getEstimatedPrice()).isNotEqualByComparingTo(originalPrice);
-        }
-
-        @Test
-        @DisplayName("Должен обновить габариты")
-        void shouldUpdateDimensions() throws Exception {
-            // Given
-            var draft = createDraft(TEST_USER_1, "DRF-UPD-003", DraftStatus.PENDING);
-
-            var newDimensions = DimensionsDto.builder()
-                    .length(new BigDecimal("100"))
-                    .width(new BigDecimal("200"))
-                    .height(new BigDecimal("300"))
-                    .build();
-
-            var updateRequest = UpdateDraftRequest.builder()
-                    .dimensions(newDimensions)
-                    .pricingRuleId(PRICING_RULE_ID)
-                    .build();
-
-            // When & Then
-            mockMvc.perform(put("/waybills/drafts/" + draft.getId())
-                            .principal(createMockAuthentication(TEST_USER_1))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(updateRequest)))
-                    .andDo(print())
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.dimensions.length").value(100))
-                    .andExpect(jsonPath("$.dimensions.width").value(200))
-                    .andExpect(jsonPath("$.dimensions.height").value(300));
         }
 
         @Test
@@ -473,7 +383,6 @@ class DraftControllerIntegrationTest {
             var updateRequest = UpdateDraftRequest.builder()
                     .recipientUserId(TEST_USER_3)
                     .recipientAddress("Новый адрес")
-                    .weightDeclared(new BigDecimal("0.5"))
                     .pricingRuleId(PRICING_RULE_ID)
                     .build();
 
@@ -485,8 +394,7 @@ class DraftControllerIntegrationTest {
                     .andDo(print())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.recipientUserId").value(TEST_USER_3))
-                    .andExpect(jsonPath("$.recipientAddress").value("Новый адрес"))
-                    .andExpect(jsonPath("$.weightDeclared").value(0.5));
+                    .andExpect(jsonPath("$.recipientAddress").value("Новый адрес"));
         }
 
         @Test
@@ -583,21 +491,25 @@ class DraftControllerIntegrationTest {
     private void createTestPricingRule() {
         jdbcTemplate.update("""
             INSERT INTO shared_data.pricing_rules
-            (pricing_rule_id, rule_name, base_price, price_per_kg, weight_min, weight_max)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (pricing_rule_id, rule_name, delivery_zone, base_price, weight_max, max_length_cm, max_width_cm, max_height_cm)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (pricing_rule_id) DO UPDATE SET
                 rule_name = EXCLUDED.rule_name,
+                delivery_zone = EXCLUDED.delivery_zone,
                 base_price = EXCLUDED.base_price,
-                price_per_kg = EXCLUDED.price_per_kg,
-                weight_min = EXCLUDED.weight_min,
-                weight_max = EXCLUDED.weight_max
+                weight_max = EXCLUDED.weight_max,
+                max_length_cm = EXCLUDED.max_length_cm,
+                max_width_cm = EXCLUDED.max_width_cm,
+                max_height_cm = EXCLUDED.max_height_cm
             """,
                 PRICING_RULE_ID,
                 "Test Rule",
+                "CITY",
                 new BigDecimal("100.00"),      // base_price
-                new BigDecimal("200.00"),      // price_per_kg
-                new BigDecimal("0.01"),        // weight_min
-                new BigDecimal("100.0")        // weight_max
+                new BigDecimal("100.0"),        // weight_max
+                new BigDecimal("60.00"),        // max_length_cm
+                new BigDecimal("40.00"),        // max_width_cm
+                new BigDecimal("30.00")         // max_height_cm
         );
     }
 
@@ -608,10 +520,8 @@ class DraftControllerIntegrationTest {
                 .senderUserId(userId)
                 .recipientUserId(RECIPIENT_USER)
                 .recipientAddress("Тестовый адрес доставки")
-                .weightDeclared(new BigDecimal("1.0"))
                 .pricingRuleId(PRICING_RULE_ID)
-                .dimensions(null)
-                .estimatedPrice(new BigDecimal("300.00"))  // base_price(100) + price_per_kg(200) * weight(1.0) = 300
+                .estimatedPrice(new BigDecimal("300.00"))
                 .draftStatus(status)
                 .createdAt(LocalDateTime.now())
                 .build();

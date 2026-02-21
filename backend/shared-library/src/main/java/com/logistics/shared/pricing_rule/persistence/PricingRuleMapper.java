@@ -23,24 +23,22 @@ public class PricingRuleMapper {
                 .id(entity.getId())
                 .ruleName(entity.getRuleName())
                 .deliveryZone(entity.getDeliveryZone())
-                .weightMin(entity.getWeightMin())
                 .weightMax(entity.getWeightMax())
+                .maxDimensions(entity.getMaxDimensions())
                 .basePrice(entity.getBasePrice())
-                .pricePerKg(entity.getPricePerKg())
                 .effectiveFrom(entity.getEffectiveFrom())
                 .effectiveTo(entity.getEffectiveTo())
                 .build();
     }
 
-    public  PricingRuleEntity toEntity(PricingRule domain) {
+    public PricingRuleEntity toEntity(PricingRule domain) {
         return PricingRuleEntity.builder()
                 .id(domain.getId())
                 .ruleName(domain.getRuleName())
                 .deliveryZone(domain.getDeliveryZone())
-                .weightMin(domain.getWeightMin())
                 .weightMax(domain.getWeightMax())
+                .maxDimensions(domain.getMaxDimensions())
                 .basePrice(domain.getBasePrice())
-                .pricePerKg(domain.getPricePerKg())
                 .effectiveFrom(domain.getEffectiveFrom())
                 .effectiveTo(domain.getEffectiveTo())
                 .build();

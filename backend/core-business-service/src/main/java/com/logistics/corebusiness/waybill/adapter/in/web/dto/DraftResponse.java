@@ -22,8 +22,6 @@ public record DraftResponse(
         String barcode,
         Long recipientUserId,
         String recipientAddress,
-        BigDecimal weightDeclared,
-        DimensionsDto dimensions,
         BigDecimal estimatedPrice,
         DraftStatus draftStatus,
         LocalDateTime createdAt

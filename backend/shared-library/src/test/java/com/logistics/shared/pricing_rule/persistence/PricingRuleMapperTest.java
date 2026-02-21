@@ -1,6 +1,7 @@
 package com.logistics.shared.pricing_rule.persistence;
 
 import com.logistics.shared.pricing_rule.domain.DeliveryZone;
+import com.logistics.shared.pricing_rule.domain.Dimensions;
 import com.logistics.shared.pricing_rule.domain.PricingRule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,10 +31,9 @@ class PricingRuleMapperTest {
                 .id(1L)
                 .ruleName("Городская доставка до 10 кг")
                 .deliveryZone(DeliveryZone.CITY)
-                .weightMin(new BigDecimal("0.0"))
                 .weightMax(new BigDecimal("10.0"))
+                .maxDimensions(Dimensions.of(new BigDecimal("60"), new BigDecimal("40"), new BigDecimal("30")))
                 .basePrice(new BigDecimal("200.00"))
-                .pricePerKg(new BigDecimal("50.00"))
                 .effectiveFrom(now.minusDays(1))
                 .effectiveTo(now.plusDays(30))
                 .build();
@@ -46,10 +46,9 @@ class PricingRuleMapperTest {
         assertThat(domain.getId()).isEqualTo(1L);
         assertThat(domain.getRuleName()).isEqualTo("Городская доставка до 10 кг");
         assertThat(domain.getDeliveryZone()).isEqualTo(DeliveryZone.CITY);
-        assertThat(domain.getWeightMin()).isEqualByComparingTo(new BigDecimal("0.0"));
         assertThat(domain.getWeightMax()).isEqualByComparingTo(new BigDecimal("10.0"));
         assertThat(domain.getBasePrice()).isEqualByComparingTo(new BigDecimal("200.00"));
-        assertThat(domain.getPricePerKg()).isEqualByComparingTo(new BigDecimal("50.00"));
+        assertThat(domain.getMaxDimensions()).isEqualTo(Dimensions.of(new BigDecimal("60"), new BigDecimal("40"), new BigDecimal("30")));
         assertThat(domain.getEffectiveFrom()).isEqualTo(entity.getEffectiveFrom());
         assertThat(domain.getEffectiveTo()).isEqualTo(entity.getEffectiveTo());
     }
@@ -61,12 +60,11 @@ class PricingRuleMapperTest {
         LocalDate now = LocalDate.now();
         PricingRule domain = PricingRule.builder()
                 .id(2L)
-                .ruleName("Международная доставка")
-                .deliveryZone(DeliveryZone.INTERNATIONAL)
-                .weightMin(new BigDecimal("5.0"))
+                .ruleName("Региональная доставка")
+                .deliveryZone(DeliveryZone.REGIONAL)
                 .weightMax(new BigDecimal("50.0"))
+                .maxDimensions(Dimensions.of(new BigDecimal("60"), new BigDecimal("40"), new BigDecimal("30")))
                 .basePrice(new BigDecimal("1000.00"))
-                .pricePerKg(new BigDecimal("150.00"))
                 .effectiveFrom(now.minusDays(10))
                 .effectiveTo(now.plusDays(60))
                 .build();
@@ -77,12 +75,11 @@ class PricingRuleMapperTest {
         // Then
         assertThat(entity).isNotNull();
         assertThat(entity.getId()).isEqualTo(2L);
-        assertThat(entity.getRuleName()).isEqualTo("Международная доставка");
-        assertThat(entity.getDeliveryZone()).isEqualTo(DeliveryZone.INTERNATIONAL);
-        assertThat(entity.getWeightMin()).isEqualByComparingTo(new BigDecimal("5.0"));
+        assertThat(entity.getRuleName()).isEqualTo("Региональная доставка");
+        assertThat(entity.getDeliveryZone()).isEqualTo(DeliveryZone.REGIONAL);
         assertThat(entity.getWeightMax()).isEqualByComparingTo(new BigDecimal("50.0"));
         assertThat(entity.getBasePrice()).isEqualByComparingTo(new BigDecimal("1000.00"));
-        assertThat(entity.getPricePerKg()).isEqualByComparingTo(new BigDecimal("150.00"));
+        assertThat(entity.getMaxDimensions()).isEqualTo(Dimensions.of(new BigDecimal("60"), new BigDecimal("40"), new BigDecimal("30")));
         assertThat(entity.getEffectiveFrom()).isEqualTo(domain.getEffectiveFrom());
         assertThat(entity.getEffectiveTo()).isEqualTo(domain.getEffectiveTo());
     }
@@ -95,10 +92,9 @@ class PricingRuleMapperTest {
                 .id(3L)
                 .ruleName("Базовое правило")
                 .deliveryZone(DeliveryZone.INTERCITY)
-                .weightMin(null)
                 .weightMax(null)
+                .maxDimensions(null)
                 .basePrice(new BigDecimal("100.00"))
-                .pricePerKg(new BigDecimal("20.00"))
                 .effectiveFrom(null)
                 .effectiveTo(null)
                 .build();
@@ -108,8 +104,8 @@ class PricingRuleMapperTest {
 
         // Then
         assertThat(domain).isNotNull();
-        assertThat(domain.getWeightMin()).isNull();
         assertThat(domain.getWeightMax()).isNull();
+        assertThat(domain.getMaxDimensions()).isNull();
         assertThat(domain.getEffectiveFrom()).isNull();
         assertThat(domain.getEffectiveTo()).isNull();
     }

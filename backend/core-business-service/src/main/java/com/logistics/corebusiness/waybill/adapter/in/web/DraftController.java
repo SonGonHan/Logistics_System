@@ -74,9 +74,7 @@ public class DraftController {
                 .senderUserId(userId)
                 .recipientPhone(request.recipientPhone())
                 .recipientAddress(request.recipientAddress())
-                .weightDeclared(request.weightDeclared())
                 .pricingRuleId(request.pricingRuleId())
-                .dimensions(DraftControllerMapper.toDimensions(request.dimensions()))
                 .build();
 
         createDraftUseCase.create(command);
@@ -161,8 +159,6 @@ public class DraftController {
                 .userId(userId)
                 .recipientUserId(request.recipientUserId())
                 .recipientAddress(request.recipientAddress())
-                .weightDeclared(request.weightDeclared())
-                .dimensions(DraftControllerMapper.toDimensions(request.dimensions()))
                 .pricingRuleId(request.pricingRuleId())
                 .build();
 

@@ -10,21 +10,20 @@ import java.time.LocalDateTime;
  *
  * <h2>Назначение</h2>
  * Представляет подтвержденную накладную после приемки посылки на ПВЗ.
- * Создается из Draft после того, как посылка физически принята и взвешена.
+ * Создается из Draft после того, как посылка физически принята.
  *
  * <h2>Жизненный цикл</h2>
- * 1. Клиент создает черновик (Draft) через веб/мобильное приложение
- * 2. Оператор ПВЗ принимает посылку, взвешивает, проверяет габариты
- * 3. Система создает Waybill с актуальными данными (вес, цена)
+ * 1. Клиент создает черновик (Draft) с выбранным тарифом
+ * 2. Оператор ПВЗ принимает посылку и подтверждает тариф
+ * 3. Система создает Waybill — finalPrice = basePrice тарифного плана
  * 4. Накладная получает уникальный номер (waybillNumber) для отслеживания
  * 5. История изменений статуса записывается в WaybillStatusHistory
  *
  * <h2>Ключевые поля</h2>
  * - waybillNumber: Уникальный номер накладной для отслеживания
- * - weightActual: Реальный вес после взвешивания (может отличаться от заявленного)
- * - finalPrice: Итоговая цена доставки (рассчитана по pricing rule)
+ * - pricingRuleId: Тарифный план (включает категорию веса и размеров)
+ * - finalPrice: Итоговая цена = basePrice тарифа
  * - status: Текущий статус (ACCEPTED_AT_PVZ, IN_TRANSIT, DELIVERED и т.д.)
- * - acceptedAt: Дата/время приемки на ПВЗ
  *
  * @see Draft для черновика до приемки
  * @see WaybillStatus для возможных статусов
@@ -43,8 +42,6 @@ public class Waybill {
     private Long senderUserId;
     private Long recipientUserId;
     private String recipientAddress;
-    private BigDecimal weightActual;
-    private Dimensions dimensions;
     private Long pricingRuleId;
     private BigDecimal finalPrice;
     private WaybillStatus status;

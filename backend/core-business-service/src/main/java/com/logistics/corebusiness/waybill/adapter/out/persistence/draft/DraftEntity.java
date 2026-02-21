@@ -1,6 +1,5 @@
 package com.logistics.corebusiness.waybill.adapter.out.persistence.draft;
 
-import com.logistics.corebusiness.waybill.domain.Dimensions;
 import com.logistics.corebusiness.waybill.domain.Draft;
 import com.logistics.corebusiness.waybill.domain.DraftStatus;
 import jakarta.persistence.*;
@@ -21,10 +20,8 @@ import java.time.LocalDateTime;
  * Индексы: barcode, draft_creator_id, sender_user_id, recipient_user_id, draft_status, created_at
  *
  * <h2>Важные особенности</h2>
- * - dimensions хранится как @Embedded (3 колонки: length_declared_cm, width_declared_cm, height_declared_cm)
- * - weight_declared и estimatedPrice могут быть NULL (опциональные при создании черновика)
+ * - Вес и габариты посылки не хранятся: они определяются выбранным тарифным планом (pricing_rule_id)
  * - draft_status маппится через @Enumerated(STRING) с CHECK constraint в БД
- * - created_at автоматически заполняется через @CreatedDate
  *
  * @see DraftJpaRepository для работы с БД
  * @see DraftPersistenceMapper для преобразования Domain ↔ Entity
@@ -78,17 +75,6 @@ public class DraftEntity {
 
     @Column(name = "recipient_address", nullable = false)
     private String recipientAddress;
-
-    @Column(name = "weight_declared", precision = 8, scale = 2)
-    private BigDecimal weightDeclared;
-
-    @Embedded
-    @AttributeOverrides({
-            @AttributeOverride(name = "length", column = @Column(name = "length_declared_cm", precision = 8, scale = 2)),
-            @AttributeOverride(name = "width", column = @Column(name = "width_declared_cm", precision = 8, scale = 2)),
-            @AttributeOverride(name = "height", column = @Column(name = "height_declared_cm", precision = 8, scale = 2))
-    })
-    private Dimensions dimensions;
 
     @Column(name = "pricing_rule_id")
     private Long pricingRuleId;

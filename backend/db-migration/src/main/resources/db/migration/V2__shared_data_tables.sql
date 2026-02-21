@@ -42,10 +42,11 @@ CREATE TABLE shared_data.pricing_rules (
                                            pricing_rule_id BIGSERIAL PRIMARY KEY,
                                            rule_name VARCHAR(100) NOT NULL,
                                            delivery_zone VARCHAR(50) NOT NULL DEFAULT 'CITY',
-                                           weight_min DECIMAL(8,2),
                                            weight_max DECIMAL(8,2),
+                                           max_length_cm DECIMAL(8,2),
+                                           max_width_cm DECIMAL(8,2),
+                                           max_height_cm DECIMAL(8,2),
                                            base_price DECIMAL(10,2) NOT NULL,
-                                           price_per_kg DECIMAL(10,2),
                                            effective_from DATE,
                                            effective_to DATE
 );

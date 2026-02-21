@@ -1,7 +1,6 @@
 package com.logistics.corebusiness.waybill.adapter.out.persistence.draft;
 
 import com.logistics.corebusiness.IntegrationTest;
-import com.logistics.corebusiness.waybill.domain.Dimensions;
 import com.logistics.corebusiness.waybill.domain.DraftStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,22 +46,14 @@ class DraftJpaRepositoryIntegrationTest {
     @DisplayName("Должен сохранить и найти Draft по ID")
     void shouldSaveAndFindById() {
         // Given
-        Dimensions dimensions = Dimensions.of(
-                BigDecimal.valueOf(25.00),
-                BigDecimal.valueOf(35.00),
-                BigDecimal.valueOf(45.00)
-        );
-
         DraftEntity entity = DraftEntity.builder()
                 .barcode("BC-TEST-001")
                 .draftCreatorId(1L)
                 .senderUserId(11L)
                 .recipientUserId(21L)
                 .recipientAddress("Москва, ул. Тестовая, д. 1")
-                .weightDeclared(BigDecimal.valueOf(4.50))
-                .dimensions(dimensions)
-                .pricingRuleId(10L)
-                .estimatedPrice(BigDecimal.valueOf(450.00))
+                .pricingRuleId(null)
+                .estimatedPrice(BigDecimal.valueOf(350.00))
                 .draftStatus(DraftStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -75,8 +66,7 @@ class DraftJpaRepositoryIntegrationTest {
         assertThat(found).isPresent();
         assertThat(found.get().getBarcode()).isEqualTo("BC-TEST-001");
         assertThat(found.get().getId()).isEqualTo(saved.getId());
-        assertThat(found.get().getWeightDeclared()).isEqualByComparingTo(BigDecimal.valueOf(4.50));
-        assertThat(found.get().getDimensions()).isEqualTo(dimensions);
+        assertThat(found.get().getEstimatedPrice()).isEqualByComparingTo(BigDecimal.valueOf(350.00));
     }
 
     @Test
@@ -89,7 +79,6 @@ class DraftJpaRepositoryIntegrationTest {
                 .senderUserId(12L)
                 .recipientUserId(22L)
                 .recipientAddress("Санкт-Петербург, пр. Невский, д. 20")
-                .weightDeclared(BigDecimal.valueOf(2.75))
                 .estimatedPrice(BigDecimal.valueOf(300.00))
                 .draftStatus(DraftStatus.PENDING)
                 .createdAt(LocalDateTime.now())
@@ -203,8 +192,6 @@ class DraftJpaRepositoryIntegrationTest {
                 .senderUserId(11L)
                 .recipientUserId(21L)
                 .recipientAddress("Test Address")
-                .weightDeclared(null)
-                .dimensions(null)
                 .pricingRuleId(null)
                 .estimatedPrice(null)
                 .draftStatus(DraftStatus.PENDING)
@@ -217,8 +204,6 @@ class DraftJpaRepositoryIntegrationTest {
 
         // Then
         assertThat(found).isPresent();
-        assertThat(found.get().getWeightDeclared()).isNull();
-        assertThat(found.get().getDimensions()).isNull();
         assertThat(found.get().getPricingRuleId()).isNull();
         assertThat(found.get().getEstimatedPrice()).isNull();
     }
@@ -262,12 +247,11 @@ class DraftJpaRepositoryIntegrationTest {
     private DraftEntity createDraftEntity(String barcode, Long senderId, Long recipientId, DraftStatus status) {
         return DraftEntity.builder()
                 .barcode(barcode)
-                .draftCreatorId(1L) // Default creator
+                .draftCreatorId(1L)
                 .senderUserId(senderId)
                 .recipientUserId(recipientId)
                 .recipientAddress("Test Address")
-                .weightDeclared(BigDecimal.valueOf(2.00))
-                .estimatedPrice(BigDecimal.valueOf(250.00))
+                .estimatedPrice(BigDecimal.valueOf(350.00))
                 .draftStatus(status)
                 .createdAt(LocalDateTime.now())
                 .build();

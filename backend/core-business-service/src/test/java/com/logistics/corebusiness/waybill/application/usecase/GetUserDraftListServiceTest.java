@@ -224,9 +224,8 @@ class GetUserDraftListServiceTest {
                 .senderUserId(creatorId)
                 .recipientUserId(999L)
                 .recipientAddress("Тестовый адрес")
-                .weightDeclared(new BigDecimal("1.0"))
-                .dimensions(null)
-                .estimatedPrice(new BigDecimal("500.00"))
+                .pricingRuleId(1L)
+                .estimatedPrice(new BigDecimal("150.00"))
                 .draftStatus(status)
                 .createdAt(createdAt)
                 .build();

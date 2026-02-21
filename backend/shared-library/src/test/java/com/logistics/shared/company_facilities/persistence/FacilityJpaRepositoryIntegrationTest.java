@@ -22,31 +22,6 @@ class FacilityJpaRepositoryIntegrationTest {
     private FacilityJpaRepository repository;
 
     @Test
-    @DisplayName("Должен сохранить и найти объект по ID")
-    void shouldSaveAndFindById() {
-        // Given
-        FacilityEntity entity = FacilityEntity.builder()
-                .type(FacilityType.PVZ)
-                .name("ПВЗ Тест")
-                .address("г. Москва, ул. Тестовая, 1")
-                .latitude(new BigDecimal("55.7500000"))
-                .longitude(new BigDecimal("37.6100000"))
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        FacilityEntity saved = repository.save(entity);
-
-        // When
-        Optional<FacilityEntity> found = repository.findById(saved.getId());
-
-        // Then
-        assertThat(found).isPresent();
-        assertThat(found.get().getName()).isEqualTo("ПВЗ Тест");
-        assertThat(found.get().getType()).isEqualTo(FacilityType.PVZ);
-        assertThat(found.get().getClosedDate()).isNull();
-    }
-
-    @Test
     @DisplayName("Должен вернуть только объекты нужного типа через findAllByType")
     void shouldFindAllByType() {
         // Given
@@ -83,6 +58,32 @@ class FacilityJpaRepositoryIntegrationTest {
         assertThat(pvzList.get(0).getType()).isEqualTo(FacilityType.PVZ);
         assertThat(pvzList.get(0).getName()).isEqualTo("ПВЗ-1");
     }
+
+    @Test
+    @DisplayName("Должен сохранить и найти объект по ID")
+    void shouldSaveAndFindById() {
+        // Given
+        FacilityEntity entity = FacilityEntity.builder()
+                .type(FacilityType.PVZ)
+                .name("ПВЗ Тест")
+                .address("г. Москва, ул. Тестовая, 1")
+                .latitude(new BigDecimal("55.7500000"))
+                .longitude(new BigDecimal("37.6100000"))
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        FacilityEntity saved = repository.save(entity);
+
+        // When
+        Optional<FacilityEntity> found = repository.findById(saved.getId());
+
+        // Then
+        assertThat(found).isPresent();
+        assertThat(found.get().getName()).isEqualTo("ПВЗ Тест");
+        assertThat(found.get().getType()).isEqualTo(FacilityType.PVZ);
+        assertThat(found.get().getClosedDate()).isNull();
+    }
+
 
     @Test
     @DisplayName("Должен сохранить объект с датой закрытия")

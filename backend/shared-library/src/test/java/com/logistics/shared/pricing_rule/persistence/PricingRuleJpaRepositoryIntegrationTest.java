@@ -2,6 +2,7 @@ package com.logistics.shared.pricing_rule.persistence;
 
 import com.logistics.shared.IntegrationTest;
 import com.logistics.shared.pricing_rule.domain.DeliveryZone;
+import com.logistics.shared.pricing_rule.domain.Dimensions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,10 +27,9 @@ class PricingRuleJpaRepositoryIntegrationTest {
         PricingRuleEntity entityToSave = PricingRuleEntity.builder()
                 .ruleName("Тестовое правило")
                 .deliveryZone(DeliveryZone.CITY)
-                .weightMin(new BigDecimal("0.0"))
                 .weightMax(new BigDecimal("10.0"))
+                .maxDimensions(Dimensions.of(new BigDecimal("60"), new BigDecimal("40"), new BigDecimal("30")))
                 .basePrice(new BigDecimal("200.00"))
-                .pricePerKg(new BigDecimal("50.00"))
                 .effectiveFrom(LocalDate.now().minusDays(1))
                 .effectiveTo(LocalDate.now().plusDays(30))
                 .build();
@@ -54,10 +54,9 @@ class PricingRuleJpaRepositoryIntegrationTest {
         PricingRuleEntity entityToSave = PricingRuleEntity.builder()
                 .ruleName("Правило без ограничений")
                 .deliveryZone(DeliveryZone.INTERCITY)
-                .weightMin(null)
                 .weightMax(null)
+                .maxDimensions(null)
                 .basePrice(new BigDecimal("300.00"))
-                .pricePerKg(new BigDecimal("70.00"))
                 .effectiveFrom(null)
                 .effectiveTo(null)
                 .build();
@@ -68,7 +67,7 @@ class PricingRuleJpaRepositoryIntegrationTest {
 
         // Then
         assertThat(found).isPresent();
-        assertThat(found.get().getWeightMin()).isNull();
+        assertThat(found.get().getMaxDimensions()).isNull();
         assertThat(found.get().getWeightMax()).isNull();
         assertThat(found.get().getEffectiveFrom()).isNull();
         assertThat(found.get().getEffectiveTo()).isNull();
@@ -82,31 +81,28 @@ class PricingRuleJpaRepositoryIntegrationTest {
                 .ruleName("Городская доставка")
                 .deliveryZone(DeliveryZone.CITY)
                 .basePrice(new BigDecimal("100.00"))
-                .pricePerKg(new BigDecimal("20.00"))
                 .build();
 
         PricingRuleEntity intercityRule = PricingRuleEntity.builder()
                 .ruleName("Межгородская доставка")
                 .deliveryZone(DeliveryZone.INTERCITY)
                 .basePrice(new BigDecimal("300.00"))
-                .pricePerKg(new BigDecimal("50.00"))
                 .build();
 
-        PricingRuleEntity internationalRule = PricingRuleEntity.builder()
-                .ruleName("Международная доставка")
-                .deliveryZone(DeliveryZone.INTERNATIONAL)
+        PricingRuleEntity suburbanRule = PricingRuleEntity.builder()
+                .ruleName("Пригородная доставка")
+                .deliveryZone(DeliveryZone.SUBURBAN)
                 .basePrice(new BigDecimal("1000.00"))
-                .pricePerKg(new BigDecimal("150.00"))
                 .build();
 
         // When
         PricingRuleEntity savedCity = repository.save(cityRule);
         PricingRuleEntity savedIntercity = repository.save(intercityRule);
-        PricingRuleEntity savedInternational = repository.save(internationalRule);
+        PricingRuleEntity savedSuburban = repository.save(suburbanRule);
 
         // Then
         assertThat(savedCity.getDeliveryZone()).isEqualTo(DeliveryZone.CITY);
         assertThat(savedIntercity.getDeliveryZone()).isEqualTo(DeliveryZone.INTERCITY);
-        assertThat(savedInternational.getDeliveryZone()).isEqualTo(DeliveryZone.INTERNATIONAL);
+        assertThat(savedSuburban.getDeliveryZone()).isEqualTo(DeliveryZone.SUBURBAN);
     }
 }

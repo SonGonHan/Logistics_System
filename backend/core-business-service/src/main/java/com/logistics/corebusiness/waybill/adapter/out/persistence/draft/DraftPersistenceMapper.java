@@ -11,15 +11,6 @@ import org.springframework.stereotype.Component;
  * - Доменная модель (Draft) не знает о JPA аннотациях
  * - JPA сущность (DraftEntity) не попадает в бизнес-логику
  *
- * <h2>Методы</h2>
- * - toEntity(Draft) - Преобразование Domain → Entity (для сохранения в БД)
- * - toDomain(DraftEntity) - Преобразование Entity → Domain (для чтения из БД)
- *
- * <h2>Особенности</h2>
- * - Dimensions (Value Object) копируется напрямую (record)
- * - Все enum-ы (DraftStatus) копируются без преобразований
- * - BigDecimal копируются по значению (immutable)
- *
  * @see Draft для доменной модели
  * @see DraftEntity для JPA сущности
  */
@@ -34,8 +25,6 @@ public class DraftPersistenceMapper {
                 .senderUserId(domain.getSenderUserId())
                 .recipientUserId(domain.getRecipientUserId())
                 .recipientAddress(domain.getRecipientAddress())
-                .weightDeclared(domain.getWeightDeclared())
-                .dimensions(domain.getDimensions())
                 .pricingRuleId(domain.getPricingRuleId())
                 .estimatedPrice(domain.getEstimatedPrice())
                 .draftStatus(domain.getDraftStatus())
@@ -51,8 +40,6 @@ public class DraftPersistenceMapper {
                 .senderUserId(entity.getSenderUserId())
                 .recipientUserId(entity.getRecipientUserId())
                 .recipientAddress(entity.getRecipientAddress())
-                .weightDeclared(entity.getWeightDeclared())
-                .dimensions(entity.getDimensions())
                 .pricingRuleId(entity.getPricingRuleId())
                 .estimatedPrice(entity.getEstimatedPrice())
                 .draftStatus(entity.getDraftStatus())

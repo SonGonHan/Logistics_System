@@ -4,7 +4,6 @@ import com.logistics.corebusiness.waybill.adapter.in.web.dto.DraftResponse;
 import com.logistics.corebusiness.waybill.application.exception.DraftNotFoundException;
 import com.logistics.corebusiness.waybill.application.port.in.command.UpdateDraftCommand;
 import com.logistics.corebusiness.waybill.application.port.out.DraftRepository;
-import com.logistics.corebusiness.waybill.domain.Dimensions;
 import com.logistics.corebusiness.waybill.domain.Draft;
 import com.logistics.corebusiness.waybill.domain.DraftStatus;
 import com.logistics.shared.pricing_rule.PricingRuleService;
@@ -47,8 +46,8 @@ class UpdateDraftServiceTest {
     }
 
     @Test
-    @DisplayName("Должен успешно обновить черновик")
-    void shouldUpdateDraftSuccessfully() {
+    @DisplayName("Должен успешно обновить адрес и получателя без изменения цены")
+    void shouldUpdateAddressAndRecipientWithoutRecalculation() {
         // Given
         Long draftId = 1L;
         Long userId = 100L;
@@ -60,9 +59,8 @@ class UpdateDraftServiceTest {
                 .senderUserId(userId)
                 .recipientUserId(200L)
                 .recipientAddress("Старый адрес")
-                .weightDeclared(new BigDecimal("2.0"))
-                .dimensions(null)
-                .estimatedPrice(new BigDecimal("1000.00"))
+                .pricingRuleId(1L)
+                .estimatedPrice(new BigDecimal("350.00"))
                 .draftStatus(DraftStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -75,8 +73,7 @@ class UpdateDraftServiceTest {
                 .userId(userId)
                 .recipientUserId(300L)
                 .recipientAddress("Новый адрес")
-                .weightDeclared(null)
-                .dimensions(null)
+                .pricingRuleId(null)
                 .build();
 
         // When
@@ -85,26 +82,24 @@ class UpdateDraftServiceTest {
         // Then
         verify(repository).findById(draftId);
         verify(repository).save(draftCaptor.capture());
+        verify(pricingRuleService, never()).calculatePrice(any());
 
         Draft updatedDraft = draftCaptor.getValue();
         assertThat(updatedDraft.getRecipientUserId()).isEqualTo(300L);
         assertThat(updatedDraft.getRecipientAddress()).isEqualTo("Новый адрес");
-        assertThat(updatedDraft.getWeightDeclared()).isEqualByComparingTo("2.0"); // Не изменился
-        assertThat(updatedDraft.getEstimatedPrice()).isEqualByComparingTo("1000.00"); // Не пересчиталась
+        assertThat(updatedDraft.getEstimatedPrice()).isEqualByComparingTo("350.00");
 
         assertThat(result).isNotNull();
         assertThat(result.recipientAddress()).isEqualTo("Новый адрес");
-
-        verifyNoMoreInteractions(repository);
     }
 
     @Test
-    @DisplayName("Должен пересчитать цену при изменении веса")
-    void shouldRecalculatePriceWhenWeightChanges() {
+    @DisplayName("Должен пересчитать цену при смене тарифного плана")
+    void shouldRecalculatePriceWhenPricingRuleChanges() {
         // Given
         Long draftId = 2L;
         Long userId = 100L;
-        Long pricingRuleId = 1L;
+        Long newRuleId = 3L;
 
         var existingDraft = Draft.builder()
                 .id(draftId)
@@ -113,97 +108,32 @@ class UpdateDraftServiceTest {
                 .senderUserId(userId)
                 .recipientUserId(200L)
                 .recipientAddress("Адрес")
-                .weightDeclared(new BigDecimal("2.0"))
-                .pricingRuleId(pricingRuleId)
-                .dimensions(null)
-                .estimatedPrice(new BigDecimal("1000.00"))
+                .pricingRuleId(1L)
+                .estimatedPrice(new BigDecimal("350.00"))
                 .draftStatus(DraftStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
 
         when(repository.findById(draftId)).thenReturn(Optional.of(existingDraft));
         when(repository.save(any(Draft.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(pricingRuleService.calculatePrice(pricingRuleId, new BigDecimal("5.0")))
-                .thenReturn(new BigDecimal("2500.00"));
+        when(pricingRuleService.calculatePrice(newRuleId)).thenReturn(new BigDecimal("650.00"));
 
         var command = UpdateDraftCommand.builder()
                 .draftId(draftId)
                 .userId(userId)
-                .recipientUserId(null)
-                .recipientAddress(null)
-                .weightDeclared(new BigDecimal("5.0"))
-                .dimensions(null)
-                .pricingRuleId(null)
+                .pricingRuleId(newRuleId)
                 .build();
 
         // When
         DraftResponse result = updateDraftService.update(command);
 
         // Then
-        verify(pricingRuleService).calculatePrice(pricingRuleId, new BigDecimal("5.0"));
+        verify(pricingRuleService).calculatePrice(newRuleId);
         verify(repository).save(draftCaptor.capture());
 
         Draft updatedDraft = draftCaptor.getValue();
-        assertThat(updatedDraft.getWeightDeclared()).isEqualByComparingTo("5.0");
-        // Новая цена: 5.0 * 500.00 = 2500.00
-        assertThat(updatedDraft.getEstimatedPrice()).isEqualByComparingTo("2500.00");
-    }
-
-    @Test
-    @DisplayName("Должен пересчитать цену при изменении габаритов")
-    void shouldRecalculatePriceWhenDimensionsChange() {
-        // Given
-        Long draftId = 3L;
-        Long userId = 100L;
-        Long pricingRuleId = 1L;
-
-        var existingDraft = Draft.builder()
-                .id(draftId)
-                .barcode("DRF-260209-333333")
-                .draftCreatorId(userId)
-                .senderUserId(userId)
-                .recipientUserId(200L)
-                .recipientAddress("Адрес")
-                .weightDeclared(new BigDecimal("3.0"))
-                .pricingRuleId(pricingRuleId)
-                .dimensions(null)
-                .estimatedPrice(new BigDecimal("1500.00"))
-                .draftStatus(DraftStatus.PENDING)
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        when(repository.findById(draftId)).thenReturn(Optional.of(existingDraft));
-        when(repository.save(any(Draft.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(pricingRuleService.calculatePrice(pricingRuleId, new BigDecimal("3.0")))
-                .thenReturn(new BigDecimal("1500.00"));
-
-        var newDimensions = new Dimensions(
-                new BigDecimal("30"),
-                new BigDecimal("40"),
-                new BigDecimal("50")
-        );
-
-        var command = UpdateDraftCommand.builder()
-                .draftId(draftId)
-                .userId(userId)
-                .recipientUserId(null)
-                .recipientAddress(null)
-                .weightDeclared(null)
-                .dimensions(newDimensions)
-                .pricingRuleId(null)
-                .build();
-
-        // When
-        updateDraftService.update(command);
-
-        // Then
-        verify(pricingRuleService).calculatePrice(pricingRuleId, new BigDecimal("3.0"));
-        verify(repository).save(draftCaptor.capture());
-
-        Draft updatedDraft = draftCaptor.getValue();
-        assertThat(updatedDraft.getDimensions()).isEqualTo(newDimensions);
-        // Цена пересчиталась: 3.0 * 500.00 = 1500.00
-        assertThat(updatedDraft.getEstimatedPrice()).isEqualByComparingTo("1500.00");
+        assertThat(updatedDraft.getPricingRuleId()).isEqualTo(newRuleId);
+        assertThat(updatedDraft.getEstimatedPrice()).isEqualByComparingTo("650.00");
     }
 
     @Test

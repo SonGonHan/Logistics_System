@@ -1,6 +1,7 @@
 package com.logistics.shared.pricing_rule;
 
 import com.logistics.shared.pricing_rule.domain.DeliveryZone;
+import com.logistics.shared.pricing_rule.domain.Dimensions;
 import com.logistics.shared.pricing_rule.domain.PricingRule;
 import com.logistics.shared.pricing_rule.persistence.PricingRuleEntity;
 import com.logistics.shared.pricing_rule.persistence.PricingRuleJpaRepository;
@@ -14,7 +15,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
@@ -45,10 +45,9 @@ class PricingRuleServiceTest {
                 .id(1L)
                 .ruleName("Городская доставка")
                 .deliveryZone(DeliveryZone.CITY)
-                .weightMin(new BigDecimal("5.0"))
                 .weightMax(new BigDecimal("10.0"))
+                .maxDimensions(Dimensions.of(new BigDecimal("60"), new BigDecimal("40"), new BigDecimal("30")))
                 .basePrice(new BigDecimal("200.00"))
-                .pricePerKg(new BigDecimal("50.00"))
                 .effectiveFrom(LocalDate.now().minusDays(1))
                 .effectiveTo(LocalDate.now().plusDays(30))
                 .build();
@@ -57,10 +56,9 @@ class PricingRuleServiceTest {
                 .id(1L)
                 .ruleName("Городская доставка")
                 .deliveryZone(DeliveryZone.CITY)
-                .weightMin(new BigDecimal("5.0"))
                 .weightMax(new BigDecimal("10.0"))
+                .maxDimensions(Dimensions.of(new BigDecimal("60"), new BigDecimal("40"), new BigDecimal("30")))
                 .basePrice(new BigDecimal("200.00"))
-                .pricePerKg(new BigDecimal("50.00"))
                 .effectiveFrom(LocalDate.now().minusDays(1))
                 .effectiveTo(LocalDate.now().plusDays(30))
                 .build();
@@ -74,11 +72,11 @@ class PricingRuleServiceTest {
         when(mapper.toDomain(any(PricingRuleEntity.class))).thenReturn(testDomain);
 
         // When
-        BigDecimal price = service.calculatePrice(1L, new BigDecimal("7.5"));
+        BigDecimal price = service.calculatePrice(1L);
 
         // Then
-        // basePrice (200) + pricePerKg (50) * weight (7.5) = 200 + 375 = 575.00
-        assertThat(price).isEqualByComparingTo(new BigDecimal("575.00"));
+        // basePrice = 200.00
+        assertThat(price).isEqualByComparingTo(new BigDecimal("200.00"));
         verify(repository, times(1)).findById(1L);
     }
 
@@ -89,7 +87,7 @@ class PricingRuleServiceTest {
         when(repository.findById(999L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThatThrownBy(() -> service.calculatePrice(999L, new BigDecimal("7.5")))
+        assertThatThrownBy(() -> service.calculatePrice(999L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Правило ценообразования не найдено");
     }
@@ -102,10 +100,8 @@ class PricingRuleServiceTest {
                 .id(1L)
                 .ruleName("Неактивное правило")
                 .deliveryZone(DeliveryZone.CITY)
-                .weightMin(new BigDecimal("5.0"))
                 .weightMax(new BigDecimal("10.0"))
                 .basePrice(new BigDecimal("200.00"))
-                .pricePerKg(new BigDecimal("50.00"))
                 .effectiveFrom(LocalDate.now().plusDays(1))
                 .effectiveTo(LocalDate.now().plusDays(30))
                 .build();
@@ -114,22 +110,9 @@ class PricingRuleServiceTest {
         when(mapper.toDomain(any(PricingRuleEntity.class))).thenReturn(inactiveRule);
 
         // When & Then
-        assertThatThrownBy(() -> service.calculatePrice(1L, new BigDecimal("7.5")))
+        assertThatThrownBy(() -> service.calculatePrice(1L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Правило ценообразования неактивно");
-    }
-
-    @Test
-    @DisplayName("Должен выбросить исключение, если вес не соответствует диапазону")
-    void shouldThrowExceptionWhenWeightNotSuitable() {
-        // Given
-        when(repository.findById(1L)).thenReturn(Optional.of(testEntity));
-        when(mapper.toDomain(any(PricingRuleEntity.class))).thenReturn(testDomain);
-
-        // When & Then
-        assertThatThrownBy(() -> service.calculatePrice(1L, new BigDecimal("15.0")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Вес не соответствует диапазону правила");
     }
 
     @Test

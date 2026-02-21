@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,24 +20,16 @@ import java.util.Optional;
  *
  * <h2>Ответственность</h2>
  * Предоставляет функциональность для:
- * - Расчета стоимости доставки по конкретному правилу
- * - Поиска подходящего правила по весу и зоне доставки
- * - Получения списка активных правил
+ * - Расчета стоимости доставки по конкретному тарифу (фиксированная ставка)
+ * - Поиска подходящего тарифа по весу и зоне доставки
+ * - Получения списка активных тарифов
  *
  * <h2>Формула расчета</h2>
- * Стоимость = basePrice + (pricePerKg × вес), округление до 2 знаков (HALF_UP)
+ * Стоимость = basePrice (фиксированная ставка тарифного плана)
  *
- * <h2>Примеры использования</h2>
- * <pre>
- * // Расчет стоимости по известному правилу
- * BigDecimal price = service.calculatePrice(ruleId, new BigDecimal("15.5"));
- *
- * // Автоматический поиск правила
- * Optional&lt;PricingRule&gt; rule = service.findSuitableRule(
- *     new BigDecimal("15.5"),
- *     DeliveryZone.CITY
- * );
- * </pre>
+ * <h2>Подбор тарифа</h2>
+ * Среди активных правил нужной зоны выбирается то, чей weightMax наименьший
+ * и при этом >= фактическому весу (правила отсортированы по weightMax, NULL — последний).
  *
  * @see PricingRuleJpaRepository для работы с БД
  * @see PricingRuleMapper для преобразования Entity ↔ Domain
@@ -51,14 +44,14 @@ public class PricingRuleService {
     private final PricingRuleMapper mapper;
 
     /**
-     * Рассчитывает стоимость доставки по конкретному правилу.
+     * Рассчитывает стоимость доставки по конкретному тарифному правилу.
+     * Цена фиксированная — это basePrice правила.
      *
      * @param pricingRuleId ID правила ценообразования
-     * @param weight вес груза в килограммах
      * @return стоимость доставки с округлением до 2 знаков
-     * @throws IllegalArgumentException если правило не найдено, неактивно или вес не подходит
+     * @throws IllegalArgumentException если правило не найдено или неактивно
      */
-    public BigDecimal calculatePrice(Long pricingRuleId, BigDecimal weight) {
+    public BigDecimal calculatePrice(Long pricingRuleId) {
         var entity = repository.findById(pricingRuleId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Правило ценообразования не найдено: " + pricingRuleId));
@@ -70,29 +63,24 @@ public class PricingRuleService {
             throw new IllegalArgumentException("Правило ценообразования неактивно");
         }
 
-        if (!rule.isWeightSuitable(weight)) {
-            log.warn("Вес {} не попадает в диапазон правила {} [{}, {}]",
-                    weight, pricingRuleId, rule.getWeightMin(), rule.getWeightMax());
-            throw new IllegalArgumentException("Вес не соответствует диапазону правила");
-        }
-
-        var price = rule.getBasePrice();
-        price = price.add(rule.getPricePerKg().multiply(weight));
-
-        return price.setScale(2, RoundingMode.HALF_UP);
+        return rule.getBasePrice().setScale(2, RoundingMode.HALF_UP);
     }
 
     /**
-     * Ищет первое подходящее правило по весу и зоне доставки.
+     * Ищет наиболее подходящий тариф по весу и зоне доставки.
+     * Выбирается тариф с наименьшим weightMax >= weight (NULL-weightMax идёт последним).
      *
      * @param weight вес груза
      * @param deliveryZone зона доставки
-     * @return первое найденное активное правило или Optional.empty()
+     * @return подходящий активный тариф или Optional.empty()
      */
     public Optional<PricingRule> findSuitableRule(BigDecimal weight, DeliveryZone deliveryZone) {
         return repository.findAll().stream()
                 .map(mapper::toDomain)
                 .filter(r -> r.isSuitable(weight, deliveryZone))
+                .sorted(Comparator.comparing(
+                        PricingRule::getWeightMax,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
                 .findFirst();
     }
 
@@ -104,7 +92,7 @@ public class PricingRuleService {
     public List<PricingRule> getActiveRules() {
         return repository.findAll().stream()
                 .map(mapper::toDomain)
-                .filter(r -> r.isActive())
+                .filter(PricingRule::isActive)
                 .toList();
     }
 

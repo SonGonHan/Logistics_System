@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -20,15 +19,9 @@ import java.time.LocalDateTime;
  *
  * <h2>Бизнес-логика</h2>
  * - Генерирует уникальный barcode
- * - Рассчитывает estimatedPrice на основе pricing rules (TODO)
+ * - Рассчитывает estimatedPrice = basePrice выбранного тарифного плана
  * - Устанавливает начальный статус PENDING
  * - Сохраняет черновик в БД
- *
- * <h2>Обогащение данных</h2>
- * - barcode: Генерируется автоматически
- * - estimatedPrice: Рассчитывается на основе веса/габаритов/тарифа
- * - draftStatus: PENDING (начальный статус)
- * - createdAt: Текущее время
  */
 @Service
 @RequiredArgsConstructor
@@ -43,7 +36,7 @@ public class CreateDraftService implements CreateDraftUseCase {
     @Override
     public void create(CreateDraftCommand command) {
         var barcode = barcodeGenerator.generate();
-        var estimatedPrice = pricingRuleService.calculatePrice(command.pricingRuleId(), command.weightDeclared());
+        var estimatedPrice = pricingRuleService.calculatePrice(command.pricingRuleId());
         var recipientUserId = recipientUserPort.findOrCreateByPhone(command.recipientPhone());
         Draft draft = Draft.builder()
                 .barcode(barcode)
@@ -51,8 +44,6 @@ public class CreateDraftService implements CreateDraftUseCase {
                 .senderUserId(command.senderUserId())
                 .recipientUserId(recipientUserId)
                 .recipientAddress(command.recipientAddress())
-                .weightDeclared(command.weightDeclared())
-                .dimensions(command.dimensions())
                 .pricingRuleId(command.pricingRuleId())
                 .estimatedPrice(estimatedPrice)
                 .draftStatus(DraftStatus.PENDING)

@@ -1,10 +1,6 @@
 package com.logistics.corebusiness.waybill.application.port.in.command;
 
-import com.logistics.corebusiness.waybill.domain.Dimensions;
-import com.logistics.shared.pricing_rule.domain.PricingRule;
 import lombok.Builder;
-
-import java.math.BigDecimal;
 
 /**
  * Команда на создание черновика накладной.
@@ -13,7 +9,7 @@ import java.math.BigDecimal;
  * - draftCreatorId: Извлекается из Spring Security Authentication
  * - senderUserId: По умолчанию равен draftCreatorId (клиент отправляет сам себе)
  * - barcode: Генерируется в Service
- * - estimatedPrice: Рассчитывается в Service на основе pricing rules
+ * - estimatedPrice: Рассчитывается как basePrice выбранного тарифного плана
  */
 @Builder
 public record CreateDraftCommand(
@@ -21,8 +17,6 @@ public record CreateDraftCommand(
         Long senderUserId,
         String recipientPhone,
         String recipientAddress,
-        Long pricingRuleId,
-        BigDecimal weightDeclared,
-        Dimensions dimensions
+        Long pricingRuleId
 ) {
 }

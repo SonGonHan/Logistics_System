@@ -1,7 +1,6 @@
 package com.logistics.corebusiness.waybill.adapter.out.persistence.waybill;
 
 import com.logistics.corebusiness.IntegrationTest;
-import com.logistics.corebusiness.waybill.domain.Dimensions;
 import com.logistics.corebusiness.waybill.domain.WaybillStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,20 +46,12 @@ class WaybillJpaRepositoryIntegrationTest {
     @DisplayName("Должен сохранить и найти Waybill по ID")
     void shouldSaveAndFindById() {
         // Given
-        Dimensions dimensions = Dimensions.of(
-                BigDecimal.valueOf(30.00),
-                BigDecimal.valueOf(40.00),
-                BigDecimal.valueOf(50.00)
-        );
-
         WaybillEntity entity = WaybillEntity.builder()
                 .waybillNumber("WB-TEST-001")
                 .waybillCreatorId(1L)
                 .senderUserId(11L)
                 .recipientUserId(21L)
                 .recipientAddress("Москва, ул. Тестовая, д. 1")
-                .weightActual(BigDecimal.valueOf(5.50))
-                .dimensions(dimensions)
                 .pricingRuleId(10L)
                 .finalPrice(BigDecimal.valueOf(500.00))
                 .status(WaybillStatus.ACCEPTED_AT_PVZ)
@@ -76,8 +67,6 @@ class WaybillJpaRepositoryIntegrationTest {
         assertThat(found).isPresent();
         assertThat(found.get().getWaybillNumber()).isEqualTo("WB-TEST-001");
         assertThat(found.get().getId()).isEqualTo(saved.getId());
-        assertThat(found.get().getWeightActual()).isEqualByComparingTo(BigDecimal.valueOf(5.50));
-        assertThat(found.get().getDimensions()).isEqualTo(dimensions);
     }
 
     @Test
@@ -90,7 +79,6 @@ class WaybillJpaRepositoryIntegrationTest {
                 .senderUserId(12L)
                 .recipientUserId(22L)
                 .recipientAddress("Санкт-Петербург, пр. Невский, д. 20")
-                .weightActual(BigDecimal.valueOf(3.25))
                 .finalPrice(BigDecimal.valueOf(350.00))
                 .status(WaybillStatus.IN_TRANSIT)
                 .createdAt(LocalDateTime.now())
@@ -196,34 +184,6 @@ class WaybillJpaRepositoryIntegrationTest {
     }
 
     @Test
-    @DisplayName("Должен корректно сохранять накладную без габаритов")
-    void shouldSaveWaybillWithoutDimensions() {
-        // Given
-        WaybillEntity entity = WaybillEntity.builder()
-                .waybillNumber("WB-NO-DIM-001")
-                .waybillCreatorId(1L)
-                .senderUserId(11L)
-                .recipientUserId(21L)
-                .recipientAddress("Казань, ул. Пушкина, д. 5")
-                .weightActual(BigDecimal.valueOf(1.00))
-                .dimensions(null)
-                .finalPrice(BigDecimal.valueOf(200.00))
-                .status(WaybillStatus.ACCEPTED_AT_PVZ)
-                .createdAt(LocalDateTime.now())
-                .acceptedAt(LocalDateTime.now())
-                .build();
-
-        // When
-        WaybillEntity saved = repository.save(entity);
-        Optional<WaybillEntity> found = repository.findById(saved.getId());
-
-        // Then
-        assertThat(found).isPresent();
-        assertThat(found.get().getDimensions()).isNull();
-        assertThat(found.get().getWeightActual()).isEqualByComparingTo(BigDecimal.valueOf(1.00));
-    }
-
-    @Test
     @DisplayName("Должен вернуть пустой Optional для несуществующего номера накладной")
     void shouldReturnEmptyOptionalForNonExistentWaybillNumber() {
         // When
@@ -250,7 +210,6 @@ class WaybillJpaRepositoryIntegrationTest {
                 .senderUserId(senderId)
                 .recipientUserId(recipientId)
                 .recipientAddress("Test Address")
-                .weightActual(BigDecimal.valueOf(2.50))
                 .finalPrice(BigDecimal.valueOf(300.00))
                 .status(status)
                 .createdAt(LocalDateTime.now())

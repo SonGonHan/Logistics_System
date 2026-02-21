@@ -24,8 +24,6 @@ public record DetailedDraftResponse(
         Long senderUserId,
         Long recipientUserId,
         String recipientAddress,
-        BigDecimal weightDeclared,
-        DimensionsDto dimensions,
         Long pricingRuleId,
         BigDecimal estimatedPrice,
         DraftStatus draftStatus,

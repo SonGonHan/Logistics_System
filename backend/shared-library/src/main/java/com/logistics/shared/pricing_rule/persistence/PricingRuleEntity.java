@@ -1,6 +1,7 @@
 package com.logistics.shared.pricing_rule.persistence;
 
 import com.logistics.shared.pricing_rule.domain.DeliveryZone;
+import com.logistics.shared.pricing_rule.domain.Dimensions;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,9 +19,8 @@ import java.time.LocalDate;
  * - Таблица: pricing_rules
  * - Последовательность: pricing_rules_pricing_rule_id_seq
  *
- * <h2>Связи</h2>
- * Хранит правила расчета стоимости доставки для разных зон и весовых категорий.
- * Enum deliveryZone сохраняется как строка (STRING).
+ * <h2>Поля габаритов</h2>
+ * maxDimensions хранится как @Embedded (3 колонки: max_length_cm, max_width_cm, max_height_cm).
  *
  * @see com.logistics.shared.pricing_rule.domain.PricingRule доменная модель
  * @see PricingRuleMapper для преобразования Entity ↔ Domain
@@ -56,17 +56,19 @@ public class PricingRuleEntity {
     @Column(name = "delivery_zone", nullable = false)
     private DeliveryZone deliveryZone;
 
-    @Column(name = "weight_min")
-    private BigDecimal weightMin;
-
     @Column(name = "weight_max")
     private BigDecimal weightMax;
 
+    @Embedded
+    @AttributeOverrides({
+            @AttributeOverride(name = "length", column = @Column(name = "max_length_cm", precision = 8, scale = 2)),
+            @AttributeOverride(name = "width",  column = @Column(name = "max_width_cm",  precision = 8, scale = 2)),
+            @AttributeOverride(name = "height", column = @Column(name = "max_height_cm", precision = 8, scale = 2))
+    })
+    private Dimensions maxDimensions;
+
     @Column(name = "base_price")
     private BigDecimal basePrice;
-
-    @Column(name = "price_per_kg")
-    private BigDecimal pricePerKg;
 
     @Column(name = "effective_from")
     private LocalDate effectiveFrom;

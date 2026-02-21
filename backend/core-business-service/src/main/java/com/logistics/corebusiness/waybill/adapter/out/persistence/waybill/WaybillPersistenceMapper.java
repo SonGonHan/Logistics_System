@@ -11,15 +11,6 @@ import org.springframework.stereotype.Component;
  * - Доменная модель (Waybill) не знает о JPA аннотациях
  * - JPA сущность (WaybillEntity) не попадает в бизнес-логику
  *
- * <h2>Методы</h2>
- * - toEntity(Waybill) - Преобразование Domain → Entity (для сохранения в БД)
- * - toDomain(WaybillEntity) - Преобразование Entity → Domain (для чтения из БД)
- *
- * <h2>Особенности</h2>
- * - Dimensions (Value Object) копируется напрямую (record)
- * - Все enum-ы (WaybillStatus) копируются без преобразований
- * - BigDecimal копируются по значению (immutable)
- *
  * @see Waybill для доменной модели
  * @see WaybillEntity для JPA сущности
  */
@@ -34,8 +25,6 @@ public class WaybillPersistenceMapper {
                 .senderUserId(domain.getSenderUserId())
                 .recipientUserId(domain.getRecipientUserId())
                 .recipientAddress(domain.getRecipientAddress())
-                .weightActual(domain.getWeightActual())
-                .dimensions(domain.getDimensions())
                 .pricingRuleId(domain.getPricingRuleId())
                 .finalPrice(domain.getFinalPrice())
                 .status(domain.getStatus())
@@ -52,8 +41,6 @@ public class WaybillPersistenceMapper {
                 .senderUserId(entity.getSenderUserId())
                 .recipientUserId(entity.getRecipientUserId())
                 .recipientAddress(entity.getRecipientAddress())
-                .weightActual(entity.getWeightActual())
-                .dimensions(entity.getDimensions())
                 .pricingRuleId(entity.getPricingRuleId())
                 .finalPrice(entity.getFinalPrice())
                 .status(entity.getStatus())

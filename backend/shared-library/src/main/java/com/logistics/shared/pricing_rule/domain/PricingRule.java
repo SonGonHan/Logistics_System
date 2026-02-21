@@ -12,15 +12,21 @@ import java.time.LocalDate;
  * Доменная модель правила ценообразования.
  *
  * <h2>Назначение</h2>
- * Представляет правило расчета стоимости доставки груза в зависимости от:
- * - Зоны доставки (город, межгород, международная)
- * - Весовой категории груза (от weightMin до weightMax)
- * - Периода действия правила (effectiveFrom — effectiveTo)
+ * Представляет тарифный план доставки, определяющий:
+ * - Зону доставки (город, межгород, региональная)
+ * - Предельный вес груза (weightMax)
+ * - Предельные габариты (maxDimensions)
+ * - Период действия правила (effectiveFrom — effectiveTo)
  *
  * <h2>Формула расчета</h2>
- * Итоговая стоимость = basePrice + (pricePerKg × вес груза)
+ * Итоговая стоимость = basePrice (фиксированная ставка за тарифный план)
+ *
+ * <h2>Подбор тарифа</h2>
+ * Выбирается правило с наименьшим weightMax >= фактическому весу,
+ * соответствующее зоне доставки.
  *
  * @see DeliveryZone для зон доставки
+ * @see Dimensions для габаритов
  */
 @AllArgsConstructor
 @NoArgsConstructor
@@ -34,13 +40,11 @@ public class PricingRule {
 
     private DeliveryZone deliveryZone;
 
-    private BigDecimal weightMin;
-
     private BigDecimal weightMax;
 
-    private BigDecimal basePrice;
+    private Dimensions maxDimensions;
 
-    private BigDecimal pricePerKg;
+    private BigDecimal basePrice;
 
     private LocalDate effectiveFrom;
 
@@ -54,9 +58,7 @@ public class PricingRule {
     }
 
     public boolean isWeightSuitable(BigDecimal weight) {
-        if (weightMin != null && weight.compareTo(weightMin) < 0) return false;
-        if (weightMax != null && weight.compareTo(weightMax) > 0) return false;
-        return true;
+        return weightMax == null || weight.compareTo(weightMax) <= 0;
     }
 
     public boolean isSuitable(BigDecimal weight, DeliveryZone deliveryZone) {

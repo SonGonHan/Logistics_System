@@ -47,8 +47,8 @@ class DeleteDraftServiceTest {
                 .senderUserId(userId)
                 .recipientUserId(200L)
                 .recipientAddress("Адрес")
-                .weightDeclared(new BigDecimal("2.0"))
-                .estimatedPrice(new BigDecimal("1000.00"))
+                .pricingRuleId(1L)
+                .estimatedPrice(new BigDecimal("350.00"))
                 .draftStatus(DraftStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();

@@ -50,9 +50,8 @@ class GetDraftServiceTest {
                 .senderUserId(userId)
                 .recipientUserId(200L)
                 .recipientAddress("г. Москва, ул. Тестовая, д. 1")
-                .weightDeclared(new BigDecimal("2.5"))
-                .dimensions(null)
-                .estimatedPrice(new BigDecimal("1250.00"))
+                .pricingRuleId(1L)
+                .estimatedPrice(new BigDecimal("350.00"))
                 .draftStatus(DraftStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -72,8 +71,7 @@ class GetDraftServiceTest {
         assertThat(result.barcode()).isEqualTo("DRF-260209-123456");
         assertThat(result.recipientUserId()).isEqualTo(200L);
         assertThat(result.recipientAddress()).isEqualTo("г. Москва, ул. Тестовая, д. 1");
-        assertThat(result.weightDeclared()).isEqualByComparingTo("2.5");
-        assertThat(result.estimatedPrice()).isEqualByComparingTo("1250.00");
+        assertThat(result.estimatedPrice()).isEqualByComparingTo("350.00");
         assertThat(result.draftStatus()).isEqualTo(DraftStatus.PENDING);
 
         verify(repository).findById(draftId);
@@ -94,9 +92,8 @@ class GetDraftServiceTest {
                 .senderUserId(userId)
                 .recipientUserId(300L)
                 .recipientAddress("г. Санкт-Петербург, ул. Невская, д. 5")
-                .weightDeclared(new BigDecimal("1.0"))
-                .dimensions(null)
-                .estimatedPrice(new BigDecimal("500.00"))
+                .pricingRuleId(1L)
+                .estimatedPrice(new BigDecimal("150.00"))
                 .draftStatus(DraftStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .build();

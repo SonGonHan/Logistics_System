@@ -44,8 +44,8 @@ class WaybillStatusHistoryJpaRepositoryIntegrationTest {
         for  (Long waybillId : waybillIds) {
             jdbcTemplate.update("""
                     INSERT INTO waybill_service.waybills
-                    (waybill_id, waybill_number, waybill_creator_id, sender_user_id, recipient_user_id, recipient_address, weight_actual, final_price)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (waybill_id, waybill_number, waybill_creator_id, sender_user_id, recipient_user_id, recipient_address, final_price)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
                 waybillId,
                 "waybill-num" + waybillId,
@@ -53,15 +53,14 @@ class WaybillStatusHistoryJpaRepositoryIntegrationTest {
                 userIds.getFirst(),
                 userIds.getLast(),
                 "address",
-                2,
                 2);
         }
 
-        jdbcTemplate.update("""
-                INSERT INTO shared_data.company_facilities
-                (facility_id, facility_type, facility_name, address)
-                VALUES (1, 'PVZ', 'name', 'address')
-            """);
+//        jdbcTemplate.update("""
+//                INSERT INTO shared_data.company_facilities
+//                (facility_id, facility_type, facility_name, address)
+//                VALUES (1, 'PVZ', 'name', 'address')
+//            """);
     }
 
     @Test
