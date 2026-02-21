@@ -16,6 +16,12 @@ volumes:
     driver: local
   logs:
     driver: local
+  elasticsearch-data:
+    driver: local
+  filebeat-data:
+    driver: local
+  grafana-data:
+    driver: local
 
 # ============================================
 # SERVICES
@@ -29,6 +35,10 @@ services:
     image: postgres:16-alpine
     container_name: logistics-postgres
     restart: unless-stopped
+    profiles:
+      - all
+      - db
+      - backend
 
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
@@ -62,6 +72,11 @@ services:
   redis:
     image: redis:7-alpine
     container_name: logistics-redis
+    profiles:
+      - all
+      - db
+      - backend
+    
     ports:
       - "6379:6379"
     command: redis-server --appendonly yes
@@ -82,7 +97,12 @@ services:
     build:
       context: ..
       dockerfile: backend/db-migration/Dockerfile
-
+    
+    profiles:
+      - all
+      - db
+      - backend
+    
     container_name: logistics-db-migration
     restart: "no"
 
@@ -115,6 +135,10 @@ services:
       context: ..
       dockerfile: backend/user-auth-service/Dockerfile
 
+    profiles:
+      - all
+      - backend
+        
     container_name: logistics-user-auth-service
     restart: unless-stopped
 
@@ -145,7 +169,7 @@ services:
 
       # Timezone
       TZ: Europe/Moscow
-
+  
     ports:
       - "${USER_AUTH_SERVICE_PORT:-8081}:8080"
 
@@ -175,28 +199,282 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # ==========================================
+  # Core Business Service
+  # ==========================================
+  core-business-service:
+    build:
+      context: ..
+      dockerfile: backend/core-business-service/Dockerfile
+    
+    profiles:
+      - all
+      - backend
+
+    container_name: logistics-core-business-service
+    restart: unless-stopped
+
+    labels:
+      com.logistics.service: "core-business-service"
+      com.logistics.environment: "${SPRING_PROFILES_ACTIVE:-dev}"
+      service: "core-business-service"
+
+    environment:
+      # Database
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-logistics_system}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-password}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      # Spring
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SERVER_PORT: 8080
+
+      # Logging
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_COM_LOGISTICS: ${LOG_LEVEL:-DEBUG}
+
+      # Timezone
+      TZ: Europe/Moscow
+
+    ports:
+      - "${CORE_BUSINESS_SERVICE_PORT:-8082}:8080"
+
+    volumes:
+      - logs:/logs
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db-migration:
+        condition: service_completed_successfully
+
+    networks:
+      - logistics-network
+
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   web-frontend:
     build:
       context: ../frontend
-      dockerfile: Dockerfile.dev  # <-- Используем dev-версию
+      dockerfile: Dockerfile.dev
+      
+    profiles:
+      - all
+      - frontend
+    
     container_name: logistics-web-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"  # <-- Vite/CRA порт (обычно 3000 или 5173), а не 80
+      - "3000:3000"
     volumes:
-      - ../frontend/src:/app/src     # <-- Прокидываем исходники
-      - ../frontend/public:/app/public # <-- Если есть public, его тоже полезно
-      - /app/node_modules            # <-- Изолируем node_modules контейнера
+      - ../frontend/src:/app/src     
+      - ../frontend/public:/app/public
+      - /app/node_modules            
 
-    # Чтобы корректно работал Hot Reload в Docker (особенно Vite)
     environment:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - WDS_SOCKET_PORT=0
 
-    depends_on:
-      user-auth-service:
-        condition: service_started
     networks:
       - logistics-network
+
+  # ==========================================
+  # ELK Stack - Elasticsearch
+  # ==========================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.3
+    container_name: logistics-elasticsearch
+    restart: unless-stopped
+    
+    profiles:
+      - all
+      - logs
+
+    environment:
+      - node.name=elasticsearch
+      - cluster.name=logistics-cluster
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+      - ./elk/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+    networks:
+      - logistics-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # ELK Stack - Kibana
+  # ==========================================
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.3
+    container_name: logistics-kibana
+    restart: unless-stopped
+    
+    profiles:
+      - all
+      - logs
+
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana
+      - ELASTICSEARCH_REQUESTTIMEOUT=60000
+      - KIBANA_DEFAULTAPPID=discover
+
+    volumes:
+      - ./elk/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+
+    ports:
+      - "5601:5601"
+
+    networks:
+      - logistics-network
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # ELK Stack - Filebeat
+  # ==========================================
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.3
+    container_name: logistics-filebeat
+    
+    profiles:
+      - all
+      - logs
+    
+    restart: unless-stopped
+    user: root
+
+    volumes:
+      # Конфигурация
+      - ./elk/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+
+      # Docker socket для чтения логов контейнеров
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+      # Docker контейнеры (логи)
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+
+      # Логи приложений (если пишем в файлы)
+      - logs:/logs:ro
+
+      # Данные Filebeat
+      - filebeat-data:/usr/share/filebeat/data
+
+    networks:
+      - logistics-network
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kibana:
+        condition: service_healthy
+
+    command: ["--strict.perms=false"]
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ==========================================
+  # Grafana - Визуализация метрик и логов
+  # ==========================================
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: logistics-grafana
+    restart: unless-stopped
+        
+    profiles:
+      - all
+      - logs
+
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+
+    ports:
+      - "3001:3000"
+
+    networks:
+      - logistics-network
+
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 

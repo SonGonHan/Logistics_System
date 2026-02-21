@@ -84,7 +84,6 @@ public class CreateAuditLogService implements CreateAuditLogUseCase {
                             () -> {
                                 var message = String.format(
                                         "Action type '%s' не найден в БД. " +
-                                                "Проверьте миграцию V3__insert_audit_action_types.sql",
                                         actionName
                                 );
                                 log.error(message);

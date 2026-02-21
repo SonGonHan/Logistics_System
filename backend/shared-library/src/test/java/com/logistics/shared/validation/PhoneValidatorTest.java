@@ -18,7 +18,7 @@ class PhoneValidatorTest {
         assertThat(validator.isValid("+375291234567", null)).isTrue(); // Беларусь
         assertThat(validator.isValid("376291234567", null)).isTrue();  // Беларусь без плюса
         assertThat(validator.isValid("+77011234567", null)).isTrue();  // Казахстан
-        assertThat(validator.isValid("78011234567", null)).isTrue();   // Казахстан без плюса
+        assertThat(validator.isValid("88011234567", null)).isTrue();   // Казахстан без плюса
     }
 
     @Test

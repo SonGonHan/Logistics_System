@@ -24,6 +24,7 @@ COPY pom.xml .
 COPY backend/shared-library/pom.xml backend/shared-library/
 COPY backend/db-migration/pom.xml backend/db-migration/
 COPY backend/user-auth-service/pom.xml backend/user-auth-service/
+COPY backend/core-business-service/pom.xml backend/core-business-service/
 
 # ШАГ 3: Скачиваем зависимости (будет закэшировано)
 RUN mvn dependency:go-offline -B -pl backend/db-migration -am
