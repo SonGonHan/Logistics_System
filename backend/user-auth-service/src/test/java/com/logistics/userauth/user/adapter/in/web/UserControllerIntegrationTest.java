@@ -7,6 +7,7 @@ import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
 import com.logistics.userauth.user.adapter.in.web.dto.UserPasswordUpdateRequest;
 import com.logistics.userauth.user.adapter.in.web.dto.UserPersonalDataUpdateRequest;
 import com.logistics.userauth.user.adapter.in.web.dto.UserPhoneUpdateRequest;
+import com.logistics.userauth.user.application.port.in.EnsureUserByPhoneUseCase;
 import com.logistics.userauth.user.application.port.in.GetUserInfoUseCase;
 import com.logistics.userauth.user.application.port.in.UpdateUserPasswordUseCase;
 import com.logistics.userauth.user.application.port.in.UpdateUserPersonalInfoUseCase;
@@ -47,6 +48,7 @@ class UserControllerIntegrationTest {
     private static final String PHONE_URL = "/users/me/phone";
     private static final String PASSWORD_URL = "/users/me/password";
     private static final String PERSONAL_URL = "/users/me/personal";
+    private static final String ENSURE_BY_PHONE_URL = "/users/ensure-by-phone";
 
     @Autowired
     private MockMvc mockMvc;
@@ -65,6 +67,9 @@ class UserControllerIntegrationTest {
 
     @MockBean
     private UpdateUserPersonalInfoUseCase updateUserPersonalInfoUseCase;
+
+    @MockBean
+    private EnsureUserByPhoneUseCase ensureUserByPhoneUseCase;
 
     private Authentication authenticationWithUserId(Long userId) {
         var user = User.builder()
@@ -380,6 +385,50 @@ class UserControllerIntegrationTest {
     // ===================================
     // Дополнительные граничные случаи
     // ===================================
+
+    // ===================================
+    // POST /users/ensure-by-phone
+    // ===================================
+
+    @Test
+    @DisplayName("POST /users/ensure-by-phone: возвращает 200 с userId")
+    void shouldEnsureUserByPhoneSuccessfully() throws Exception {
+        // Given
+        when(ensureUserByPhoneUseCase.ensure(any())).thenReturn(77L);
+
+        var requestBody = """
+                {"phone": "89991234567"}
+                """;
+
+        // When / Then
+        mockMvc.perform(post(ENSURE_BY_PHONE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(77L));
+
+        var captor = ArgumentCaptor.forClass(
+                com.logistics.userauth.user.application.port.in.command.EnsureUserByPhoneCommand.class);
+        verify(ensureUserByPhoneUseCase).ensure(captor.capture());
+        assertThat(captor.getValue().phone()).isEqualTo("89991234567");
+    }
+
+    @Test
+    @DisplayName("POST /users/ensure-by-phone: возвращает 400 при пустом номере телефона")
+    void shouldReturn400WhenPhoneIsBlank() throws Exception {
+        // Given
+        var requestBody = """
+                {"phone": ""}
+                """;
+
+        // When / Then
+        mockMvc.perform(post(ENSURE_BY_PHONE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(ensureUserByPhoneUseCase);
+    }
 
     @Test
     @DisplayName("Все эндпоинты: возвращают правильный Content-Type")
