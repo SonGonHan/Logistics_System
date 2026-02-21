@@ -1,12 +1,10 @@
 package com.logistics.userauth.user.adapter.in.web;
 
 import com.logistics.userauth.common.api.GetInfoOperation;
-import com.logistics.userauth.user.adapter.in.web.dto.UserInfoResponse;
-import com.logistics.userauth.user.adapter.in.web.dto.UserPasswordUpdateRequest;
-import com.logistics.userauth.user.adapter.in.web.dto.UserPersonalDataUpdateRequest;
-import com.logistics.userauth.user.adapter.in.web.dto.UserPhoneUpdateRequest;
+import com.logistics.userauth.user.adapter.in.web.dto.*;
 import com.logistics.userauth.user.application.port.in.*;
 import com.logistics.userauth.user.application.port.in.command.*;
+import com.logistics.userauth.user.application.port.in.command.EnsureUserByPhoneCommand;
 import com.logistics.userauth.user.infrastructure.LogisticsUserDetails;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,6 +44,7 @@ public class UserController {
     private final UpdateUserPhoneUseCase updateUserPhoneUseCase;
     private final UpdateUserPasswordUseCase updateUserPasswordUseCase;
     private final UpdateUserPersonalInfoUseCase updateUserPersonalInfoUseCase;
+    private final EnsureUserByPhoneUseCase ensureUserByPhoneUseCase;
 
     /**
      * Возвращает информацию о текущем пользователе.
@@ -131,5 +130,21 @@ public class UserController {
         return ResponseEntity.ok(updateUserPersonalInfoUseCase.update(command));
     }
 
+    /**
+     * POST /users/ensure-by-phone
+     * Найти или создать пользователя по номеру телефона.
+     *
+     * <p>Используется внутренними сервисами (например, core-business-service)
+     * при создании накладной для авто-регистрации получателя.
+     * Требует действующего JWT.
+     */
+    @PostMapping("/ensure-by-phone")
+    public ResponseEntity<EnsureUserByPhoneResponse> ensureByPhone(
+            @Valid @RequestBody EnsureUserByPhoneRequest request
+    ) {
+        var command = new EnsureUserByPhoneCommand(request.phone());
+        var userId = ensureUserByPhoneUseCase.ensure(command);
+        return ResponseEntity.ok(new EnsureUserByPhoneResponse(userId));
+    }
 
 }

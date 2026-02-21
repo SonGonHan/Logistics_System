@@ -72,7 +72,7 @@ public class DraftController {
         var command = CreateDraftCommand.builder()
                 .draftCreatorId(userId)
                 .senderUserId(userId)
-                .recipientUserId(request.recipientUserId())
+                .recipientPhone(request.recipientPhone())
                 .recipientAddress(request.recipientAddress())
                 .weightDeclared(request.weightDeclared())
                 .pricingRuleId(request.pricingRuleId())

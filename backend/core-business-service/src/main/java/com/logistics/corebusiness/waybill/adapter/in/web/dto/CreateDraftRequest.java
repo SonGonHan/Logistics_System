@@ -3,6 +3,7 @@ package com.logistics.corebusiness.waybill.adapter.in.web.dto;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Builder;
 
 import java.math.BigDecimal;
@@ -11,14 +12,14 @@ import java.math.BigDecimal;
  * Запрос на создание черновика накладной.
  *
  * <h2>Валидация</h2>
- * - recipientUserId: ID получателя (обязательно)
+ * - recipientPhone: Телефон получателя (обязательно). Если пользователя нет в системе — он создаётся автоматически.
  * - recipientAddress: Адрес доставки (обязательно)
  * - weightDeclared: Заявленный вес в кг (обязательно, > 0)
  * - dimensions: Габариты посылки (опционально)
  *
  * <h2>Пример запроса</h2>
  * {
- *   "recipientUserId": 123,
+ *   "recipientPhone": "+79001234567",
  *   "recipientAddress": "г. Москва, ул. Ленина, д. 10, кв. 5",
  *   "weightDeclared": 2.5,
  *   "dimensions": {
@@ -30,8 +31,8 @@ import java.math.BigDecimal;
  */
 @Builder
 public record CreateDraftRequest(
-        @NotNull(message = "ID получателя обязателен")
-        Long recipientUserId,
+        @NotBlank(message = "Телефон получателя обязателен")
+        String recipientPhone,
 
         @NotBlank(message = "Адрес доставки обязателен")
         String recipientAddress,

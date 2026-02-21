@@ -19,7 +19,7 @@ import java.math.BigDecimal;
 public record CreateDraftCommand(
         Long draftCreatorId,
         Long senderUserId,
-        Long recipientUserId,
+        String recipientPhone,
         String recipientAddress,
         Long pricingRuleId,
         BigDecimal weightDeclared,
