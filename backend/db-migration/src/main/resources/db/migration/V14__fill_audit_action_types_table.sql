@@ -35,7 +35,8 @@ INSERT INTO shared_data.audit_action_types (action_type_id, action_name, categor
                                                                                                     (23, 'WAYBILL_CONFIRM', 'Waybills', 'Подтверждение условий накладной'),
                                                                                                     (24, 'WAYBILL_CANCEL', 'Waybills', 'Отмена накладной'),
                                                                                                     (25, 'WAYBILL_REROUTE', 'Waybills', 'Переадресация накладной'),
-                                                                                                    (26, 'WAYBILL_SERVICE_ADD', 'Waybills', 'Добавление дополнительной услуги к накладной')
+                                                                                                    (26, 'WAYBILL_SERVICE_ADD', 'Waybills', 'Добавление дополнительной услуги к накладной'),
+                                                                                                    (81, 'WAYBILL_CREATE', 'Waybills', 'Создание накладной из черновика')
     ON CONFLICT (action_type_id) DO NOTHING;
 
 -- Категория: Pvz Operations

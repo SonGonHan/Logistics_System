@@ -24,6 +24,8 @@ class FacilityJpaRepositoryIntegrationTest {
     @Test
     @DisplayName("Должен вернуть только объекты нужного типа через findAllByType")
     void shouldFindAllByType() {
+        repository.deleteAll();
+
         // Given
         FacilityEntity pvz = FacilityEntity.builder()
                 .type(FacilityType.PVZ)
@@ -52,6 +54,8 @@ class FacilityJpaRepositoryIntegrationTest {
 
         // When
         List<FacilityEntity> pvzList = repository.findAllByType(FacilityType.PVZ);
+
+        System.out.println(pvzList.toString());
 
         // Then
         assertThat(pvzList).hasSize(1);

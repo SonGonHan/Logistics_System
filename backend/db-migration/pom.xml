@@ -59,8 +59,8 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
-					<!-- ДОБАВЬ ЭТУ СТРОКУ: -->
 					<mainClass>com.logistics.db.DbMigrationApplication</mainClass>
+					<classifier>exec</classifier>
 				</configuration>
 			</plugin>
 		</plugins>
