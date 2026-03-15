@@ -1,5 +1,8 @@
 package com.logistics.corebusiness.common.web;
 
+import com.logistics.corebusiness.acceptance.application.exception.AcceptanceInvalidStatusException;
+import com.logistics.corebusiness.acceptance.application.exception.AcceptanceNotFoundException;
+import com.logistics.corebusiness.acceptance.application.exception.AcceptanceValidationException;
 import com.logistics.corebusiness.waybill.application.exception.DraftAccessDeniedException;
 import com.logistics.corebusiness.waybill.application.exception.DraftInvalidStatusException;
 import com.logistics.corebusiness.waybill.application.exception.DraftNotFoundException;
@@ -98,6 +101,48 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleDraftValidation(DraftValidationException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "VALIDATION_ERROR");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    /**
+     * Обработка исключения "приёмка не найдена".
+     *
+     * @param ex AcceptanceNotFoundException
+     * @return ResponseEntity с кодом 404
+     */
+    @ExceptionHandler(AcceptanceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleAcceptanceNotFound(AcceptanceNotFoundException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "ACCEPTANCE_NOT_FOUND");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
+     * Обработка исключения "недопустимый статус приёмки".
+     *
+     * @param ex AcceptanceInvalidStatusException
+     * @return ResponseEntity с кодом 409
+     */
+    @ExceptionHandler(AcceptanceInvalidStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleAcceptanceInvalidStatus(AcceptanceInvalidStatusException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "INVALID_ACCEPTANCE_STATUS");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    /**
+     * Обработка исключения валидации бизнес-правил приёмки.
+     *
+     * @param ex AcceptanceValidationException
+     * @return ResponseEntity с кодом 400
+     */
+    @ExceptionHandler(AcceptanceValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleAcceptanceValidation(AcceptanceValidationException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "ACCEPTANCE_VALIDATION_ERROR");
         body.put("message", ex.getMessage());
         return ResponseEntity.badRequest().body(body);
     }
