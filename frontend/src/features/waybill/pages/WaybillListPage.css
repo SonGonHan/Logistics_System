@@ -20,6 +20,24 @@
     background-color: #218838;
 }
 
+.waybill-tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.waybill-tab-button {
+    width: auto;
+    padding: 10px 16px;
+    background-color: #e9ecef;
+    color: #212529;
+}
+
+.waybill-tab-button.active {
+    background-color: #0d6efd;
+    color: #fff;
+}
+
 .waybill-filters {
     display: flex;
     gap: 20px;
@@ -100,6 +118,30 @@
     background-color: #6c757d;
 }
 
+.waybill-status-waybill-accepted {
+    background-color: #0d6efd;
+}
+
+.waybill-status-waybill-transit {
+    background-color: #fd7e14;
+}
+
+.waybill-status-waybill-pickup {
+    background-color: #6f42c1;
+}
+
+.waybill-status-waybill-delivered {
+    background-color: #198754;
+}
+
+.waybill-status-waybill-returning {
+    background-color: #dc3545;
+}
+
+.waybill-status-waybill-cancelled {
+    background-color: #6c757d;
+}
+
 .waybill-actions {
     display: flex;
     gap: 10px;
@@ -127,4 +169,10 @@
     padding: 60px 20px;
 }
 
-/* Используем глобальный класс .error-message */
+.waybill-row-clickable {
+    cursor: pointer;
+}
+
+.waybill-row-clickable:hover {
+    background-color: #f8f9fa;
+}

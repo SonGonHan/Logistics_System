@@ -7,6 +7,9 @@ import com.logistics.corebusiness.waybill.application.exception.DraftAccessDenie
 import com.logistics.corebusiness.waybill.application.exception.DraftInvalidStatusException;
 import com.logistics.corebusiness.waybill.application.exception.DraftNotFoundException;
 import com.logistics.corebusiness.waybill.application.exception.DraftValidationException;
+import com.logistics.corebusiness.waybill.application.exception.WaybillInvalidStatusTransitionException;
+import com.logistics.corebusiness.waybill.application.exception.WaybillNotFoundException;
+import com.logistics.corebusiness.waybill.application.exception.WaybillValidationException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -101,6 +104,49 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleDraftValidation(DraftValidationException ex) {
         Map<String, Object> body = new HashMap<>();
         body.put("error", "VALIDATION_ERROR");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    /**
+     * Обработка исключения "накладная не найдена".
+     *
+     * @param ex WaybillNotFoundException
+     * @return ResponseEntity с кодом 404
+     */
+    @ExceptionHandler(WaybillNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleWaybillNotFound(WaybillNotFoundException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "WAYBILL_NOT_FOUND");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
+     * Обработка исключения "недопустимый переход статуса накладной".
+     *
+     * @param ex WaybillInvalidStatusTransitionException
+     * @return ResponseEntity с кодом 409
+     */
+    @ExceptionHandler(WaybillInvalidStatusTransitionException.class)
+    public ResponseEntity<Map<String, Object>> handleWaybillInvalidStatusTransition(
+            WaybillInvalidStatusTransitionException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "INVALID_STATUS_TRANSITION");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
+    }
+
+    /**
+     * Обработка исключения валидации бизнес-правил накладной.
+     *
+     * @param ex WaybillValidationException
+     * @return ResponseEntity с кодом 400
+     */
+    @ExceptionHandler(WaybillValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleWaybillValidation(WaybillValidationException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "WAYBILL_VALIDATION_ERROR");
         body.put("message", ex.getMessage());
         return ResponseEntity.badRequest().body(body);
     }

@@ -1,0 +1,208 @@
+.acceptance-container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.acceptance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.acceptance-back-button {
+    width: auto;
+    background-color: #6c757d;
+}
+
+.acceptance-back-button:hover:not(:disabled) {
+    background-color: #5a6268;
+}
+
+.acceptance-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+}
+
+.acceptance-step {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    color: #6c757d;
+    background-color: #e9ecef;
+    font-weight: 500;
+}
+
+.acceptance-step-active {
+    background-color: #007bff;
+    color: white;
+    font-weight: bold;
+}
+
+.acceptance-step-done {
+    background-color: #28a745;
+    color: white;
+}
+
+.acceptance-step-divider {
+    color: #adb5bd;
+    font-size: 18px;
+}
+
+.acceptance-form {
+    background-color: white;
+    padding: 25px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.acceptance-select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    font-size: 16px;
+}
+
+.acceptance-required {
+    color: #dc3545;
+}
+
+.acceptance-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.acceptance-submit-button {
+    width: auto;
+    background-color: #007bff;
+    padding: 12px 24px;
+    font-size: 16px;
+}
+
+.acceptance-submit-button:hover:not(:disabled) {
+    background-color: #0069d9;
+}
+
+.acceptance-confirm-button {
+    width: auto;
+    background-color: #28a745;
+    padding: 12px 24px;
+    font-size: 16px;
+}
+
+.acceptance-confirm-button:hover:not(:disabled) {
+    background-color: #218838;
+}
+
+.acceptance-cancel-button {
+    width: auto;
+    background-color: #6c757d;
+    padding: 12px 24px;
+    font-size: 16px;
+}
+
+.acceptance-cancel-button:hover:not(:disabled) {
+    background-color: #5a6268;
+}
+
+.acceptance-review,
+.acceptance-done {
+    background-color: white;
+    padding: 25px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.acceptance-details {
+    margin: 20px 0;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.acceptance-detail-row {
+    display: flex;
+    padding: 12px 16px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.acceptance-detail-row:last-child {
+    border-bottom: none;
+}
+
+.acceptance-detail-row:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+.acceptance-detail-label {
+    font-weight: 600;
+    min-width: 220px;
+    color: #495057;
+}
+
+.acceptance-detail-value {
+    flex: 1;
+}
+
+.acceptance-price {
+    font-weight: bold;
+    color: #28a745;
+    font-size: 16px;
+}
+
+.acceptance-waybill-number {
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 18px;
+    color: #007bff;
+}
+
+.acceptance-status-badge {
+    padding: 5px 10px;
+    border-radius: 3px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.acceptance-status-pending {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.acceptance-status-accepted {
+    background-color: #28a745;
+}
+
+.acceptance-success-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: #28a745;
+    color: white;
+    font-size: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+}
+
+.acceptance-success-message {
+    text-align: center;
+    color: #28a745;
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.acceptance-done h2 {
+    text-align: center;
+}

@@ -9,6 +9,8 @@ import HomePage from "./pages/HomePage";
 import WaybillListPage from "./features/waybill/pages/WaybillListPage";
 import CreateDraftPage from "./features/waybill/pages/CreateDraftPage";
 import EditDraftPage from "./features/waybill/pages/EditDraftPage";
+import WaybillDetailPage from "./features/waybill/pages/WaybillDetailPage";
+import AcceptancePage from "./features/acceptance/pages/AcceptancePage";
 
 import ProtectedRoute from "./shared/routing/ProtectedRoute";
 
@@ -53,6 +55,24 @@ export default function App() {
                 element={
                     <ProtectedRoute>
                         <EditDraftPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/waybills/detail/:id"
+                element={
+                    <ProtectedRoute>
+                        <WaybillDetailPage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/acceptance"
+                element={
+                    <ProtectedRoute>
+                        <AcceptancePage />
                     </ProtectedRoute>
                 }
             />
