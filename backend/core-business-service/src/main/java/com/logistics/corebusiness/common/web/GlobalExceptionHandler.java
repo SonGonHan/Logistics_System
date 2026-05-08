@@ -3,6 +3,9 @@ package com.logistics.corebusiness.common.web;
 import com.logistics.corebusiness.acceptance.application.exception.AcceptanceInvalidStatusException;
 import com.logistics.corebusiness.acceptance.application.exception.AcceptanceNotFoundException;
 import com.logistics.corebusiness.acceptance.application.exception.AcceptanceValidationException;
+import com.logistics.corebusiness.rating.application.exception.RatingDuplicateException;
+import com.logistics.corebusiness.rating.application.exception.RatingNotFoundException;
+import com.logistics.corebusiness.rating.application.exception.RatingValidationException;
 import com.logistics.corebusiness.waybill.application.exception.DraftAccessDeniedException;
 import com.logistics.corebusiness.waybill.application.exception.DraftInvalidStatusException;
 import com.logistics.corebusiness.waybill.application.exception.DraftNotFoundException;
@@ -191,6 +194,48 @@ public class GlobalExceptionHandler {
         body.put("error", "ACCEPTANCE_VALIDATION_ERROR");
         body.put("message", ex.getMessage());
         return ResponseEntity.badRequest().body(body);
+    }
+
+    /**
+     * Обработка исключения "рейтинг не найден".
+     *
+     * @param ex RatingNotFoundException
+     * @return ResponseEntity с кодом 404
+     */
+    @ExceptionHandler(RatingNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleRatingNotFound(RatingNotFoundException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "RATING_NOT_FOUND");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    /**
+     * Обработка исключения валидации бизнес-правил рейтинга.
+     *
+     * @param ex RatingValidationException
+     * @return ResponseEntity с кодом 400
+     */
+    @ExceptionHandler(RatingValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleRatingValidation(RatingValidationException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "RATING_VALIDATION_ERROR");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    /**
+     * Обработка исключения дублирования рейтинга.
+     *
+     * @param ex RatingDuplicateException
+     * @return ResponseEntity с кодом 409
+     */
+    @ExceptionHandler(RatingDuplicateException.class)
+    public ResponseEntity<Map<String, Object>> handleRatingDuplicate(RatingDuplicateException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "RATING_DUPLICATE");
+        body.put("message", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
     /**

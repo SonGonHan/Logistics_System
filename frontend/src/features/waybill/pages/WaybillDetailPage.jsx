@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getWaybillById, updateWaybillStatus } from "../api/waybillApi";
+import { getRatingByWaybill } from "../../rating/api/ratingApi";
 import "./WaybillDetailPage.css";
 
 const STATUS_LABELS = {
@@ -31,6 +32,7 @@ export default function WaybillDetailPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+    const [existingRating, setExistingRating] = useState(null);
 
     useEffect(() => {
         loadWaybill();
@@ -49,6 +51,16 @@ export default function WaybillDetailPage() {
             setError(null);
             const data = await getWaybillById(id);
             setWaybill(data);
+            setExistingRating(null);
+
+            if (data.status === "DELIVERED") {
+                try {
+                    const rating = await getRatingByWaybill(id);
+                    setExistingRating(rating);
+                } catch (err) {
+                    if (err.status !== 404) console.error(err);
+                }
+            }
         } catch (err) {
             setError(err.message || "Ошибка загрузки накладной");
         } finally {
@@ -156,6 +168,36 @@ export default function WaybillDetailPage() {
                     </div>
                 )}
             </section>
+
+            {waybill.status === "DELIVERED" && (
+                <section className="waybill-detail-card">
+                    <h2>Оценка доставки</h2>
+                    {existingRating ? (
+                        <div>
+                            <div className="waybill-info-row">
+                                <span>Оценка:</span>
+                                <strong>{"★".repeat(existingRating.score)}{"☆".repeat(5 - existingRating.score)} ({existingRating.score}/5)</strong>
+                            </div>
+                            {existingRating.comment && (
+                                <div className="waybill-info-row">
+                                    <span>Отзыв:</span>
+                                    <strong>{existingRating.comment}</strong>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div>
+                            <p className="waybill-muted">Оценка ещё не оставлена</p>
+                            <button
+                                className="waybill-next-status-button"
+                                onClick={() => navigate(`/ratings/waybill/${waybill.id}`)}
+                            >
+                                Оставить оценку
+                            </button>
+                        </div>
+                    )}
+                </section>
+            )}
         </div>
     );
 }

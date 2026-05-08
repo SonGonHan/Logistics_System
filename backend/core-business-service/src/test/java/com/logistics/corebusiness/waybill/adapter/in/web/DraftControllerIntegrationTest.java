@@ -120,6 +120,7 @@ class DraftControllerIntegrationTest {
             assertThat(savedDraft.getBarcode()).isNotNull();
             assertThat(savedDraft.getDraftStatus()).isEqualTo(DraftStatus.PENDING);
             assertThat(savedDraft.getEstimatedPrice()).isNotNull();
+            assertThat(countAuditLogs("DRAFT_CREATE")).isEqualTo(1);
         }
 
         @Test
@@ -347,6 +348,8 @@ class DraftControllerIntegrationTest {
                     .andDo(print())
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.recipientAddress").value("г. Казань, ул. Баумана, д. 20"));
+
+            assertThat(countAuditLogs("DRAFT_UPDATE")).isEqualTo(1);
         }
 
         @Test
@@ -439,6 +442,7 @@ class DraftControllerIntegrationTest {
 
             // Проверяем, что черновик действительно удален из БД
             assertThat(draftRepository.findById(draftId)).isEmpty();
+            assertThat(countAuditLogs("DRAFT_CANCEL")).isEqualTo(1);
         }
 
         @Test
@@ -527,6 +531,16 @@ class DraftControllerIntegrationTest {
                 .build();
 
         return draftRepository.save(draft);
+    }
+
+    private int countAuditLogs(String actionTypeName) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM user_management.audit_logs al " +
+                        "JOIN shared_data.audit_action_types aat ON al.action_type_id = aat.action_type_id " +
+                        "WHERE aat.action_name = ?",
+                Integer.class,
+                actionTypeName
+        );
     }
 
     private JwtAuthenticationToken createMockAuthentication(Long userId) {

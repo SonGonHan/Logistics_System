@@ -1,5 +1,7 @@
 package com.logistics.corebusiness.waybill.application.usecase;
 
+import com.logistics.corebusiness.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.corebusiness.audit.application.port.in.command.CreateAuditLogCommand;
 import com.logistics.corebusiness.waybill.application.exception.DraftNotFoundException;
 import com.logistics.corebusiness.waybill.application.port.in.command.DeleteDraftCommand;
 import com.logistics.corebusiness.waybill.application.port.out.DraftRepository;
@@ -9,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -16,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
@@ -26,11 +31,17 @@ class DeleteDraftServiceTest {
     @Mock
     private DraftRepository repository;
 
+    @Mock
+    private CreateAuditLogUseCase auditLogUseCase;
+
+    @Captor
+    private ArgumentCaptor<CreateAuditLogCommand> auditCaptor;
+
     private DeleteDraftService service;
 
     @BeforeEach
     void setUp() {
-        service = new DeleteDraftService(repository);
+        service = new DeleteDraftService(repository, auditLogUseCase);
     }
 
     @Test
@@ -65,8 +76,9 @@ class DeleteDraftServiceTest {
 
         // Then
         verify(repository).findById(draftId);
+        verify(auditLogUseCase).create(any(CreateAuditLogCommand.class));
         verify(repository).delete(draft);
-        verifyNoMoreInteractions(repository);
+        verifyNoMoreInteractions(repository, auditLogUseCase);
     }
 
     @Test
@@ -90,6 +102,87 @@ class DeleteDraftServiceTest {
 
         verify(repository).findById(draftId);
         verify(repository, never()).delete(any());
+        verify(auditLogUseCase, never()).create(any());
+    }
+
+    @Test
+    @DisplayName("Должен записать аудит удаления черновика")
+    void shouldAuditDraftDeletion() {
+        // Given
+        Long draftId = 1L;
+        Long userId = 100L;
+        String barcode = "DRF-260209-123456";
+
+        var draft = Draft.builder()
+                .id(draftId)
+                .barcode(barcode)
+                .draftCreatorId(userId)
+                .senderUserId(userId)
+                .recipientUserId(200L)
+                .recipientAddress("Адрес")
+                .pricingRuleId(1L)
+                .estimatedPrice(new BigDecimal("350.00"))
+                .draftStatus(DraftStatus.PENDING)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        when(repository.findById(draftId)).thenReturn(Optional.of(draft));
+
+        var command = DeleteDraftCommand.builder()
+                .draftId(draftId)
+                .userId(userId)
+                .build();
+
+        // When
+        service.delete(command);
+
+        // Then
+        verify(auditLogUseCase).create(auditCaptor.capture());
+
+        var auditCommand = auditCaptor.getValue();
+        assertThat(auditCommand.actionTypeName()).isEqualTo("DRAFT_CANCEL");
+        assertThat(auditCommand.userId()).isEqualTo(userId);
+        assertThat(auditCommand.tableName()).isEqualTo("waybill_drafts");
+        assertThat(auditCommand.recordId()).isEqualTo(draftId);
+        assertThat(auditCommand.newValues())
+                .containsEntry("draftId", draftId)
+                .containsEntry("barcode", barcode);
+    }
+
+    @Test
+    @DisplayName("Должен записать аудит перед удалением черновика")
+    void shouldAuditBeforeDelete() {
+        // Given
+        Long draftId = 1L;
+        Long userId = 100L;
+
+        var draft = Draft.builder()
+                .id(draftId)
+                .barcode("DRF-260209-123456")
+                .draftCreatorId(userId)
+                .senderUserId(userId)
+                .recipientUserId(200L)
+                .recipientAddress("Адрес")
+                .pricingRuleId(1L)
+                .estimatedPrice(new BigDecimal("350.00"))
+                .draftStatus(DraftStatus.PENDING)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        when(repository.findById(draftId)).thenReturn(Optional.of(draft));
+
+        var command = DeleteDraftCommand.builder()
+                .draftId(draftId)
+                .userId(userId)
+                .build();
+
+        // When
+        service.delete(command);
+
+        // Then
+        var inOrder = inOrder(auditLogUseCase, repository);
+        inOrder.verify(auditLogUseCase).create(any());
+        inOrder.verify(repository).delete(any());
     }
 
 }

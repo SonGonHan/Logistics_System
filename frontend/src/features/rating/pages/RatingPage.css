@@ -1,0 +1,156 @@
+.rating-container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.rating-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.rating-back-button {
+    width: auto;
+    background-color: #6c757d;
+}
+
+.rating-back-button:hover:not(:disabled) {
+    background-color: #5a6268;
+}
+
+.rating-waybill-info {
+    display: flex;
+    gap: 30px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #495057;
+}
+
+.rating-stars {
+    display: flex;
+    gap: 5px;
+    margin: 10px 0;
+}
+
+.rating-star {
+    font-size: 32px;
+    cursor: default;
+    transition: color 0.2s;
+}
+
+.rating-star-filled {
+    color: #ffc107;
+}
+
+.rating-star-empty {
+    color: #dee2e6;
+}
+
+.rating-star-interactive {
+    cursor: pointer;
+}
+
+.rating-star-interactive:hover {
+    color: #ffca2c;
+}
+
+.rating-score-label {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 14px;
+    color: #6c757d;
+    vertical-align: middle;
+}
+
+.rating-score-text {
+    font-size: 18px;
+    font-weight: bold;
+    color: #495057;
+    margin: 5px 0 15px;
+}
+
+.rating-form {
+    background-color: white;
+    padding: 25px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.rating-required {
+    color: #dc3545;
+}
+
+.rating-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.rating-submit-button {
+    width: auto;
+    background-color: #28a745;
+    padding: 12px 24px;
+    font-size: 16px;
+}
+
+.rating-submit-button:hover:not(:disabled) {
+    background-color: #218838;
+}
+
+.rating-submit-button:disabled {
+    background-color: #94d3a2;
+    cursor: not-allowed;
+}
+
+.rating-cancel-button {
+    width: auto;
+    background-color: #6c757d;
+    padding: 12px 24px;
+    font-size: 16px;
+}
+
+.rating-cancel-button:hover:not(:disabled) {
+    background-color: #5a6268;
+}
+
+.rating-existing {
+    background-color: white;
+    padding: 25px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.rating-comment-display {
+    margin-top: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    border-left: 4px solid #007bff;
+}
+
+.rating-comment-display p {
+    margin: 5px 0 0;
+    color: #495057;
+}
+
+.rating-date {
+    margin-top: 15px;
+    font-size: 13px;
+    color: #adb5bd;
+}
+
+.rating-success-message {
+    padding: 12px 16px;
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: 500;
+}

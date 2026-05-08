@@ -1,5 +1,7 @@
 package com.logistics.corebusiness.waybill.application.usecase;
 
+import com.logistics.corebusiness.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.corebusiness.audit.application.port.in.command.CreateAuditLogCommand;
 import com.logistics.corebusiness.waybill.application.port.in.command.CreateDraftCommand;
 import com.logistics.corebusiness.waybill.application.port.out.DraftRepository;
 import com.logistics.corebusiness.waybill.application.port.out.RecipientUserPort;
@@ -37,8 +39,14 @@ class CreateDraftServiceTest {
     @Mock
     private RecipientUserPort recipientUserPort;
 
+    @Mock
+    private CreateAuditLogUseCase auditLogUseCase;
+
     @Captor
     private ArgumentCaptor<Draft> draftCaptor;
+
+    @Captor
+    private ArgumentCaptor<CreateAuditLogCommand> auditCaptor;
 
     private CreateDraftService createDraftService;
 
@@ -48,7 +56,13 @@ class CreateDraftServiceTest {
                 repository,
                 barcodeGenerator,
                 pricingRuleService,
-                recipientUserPort);
+                recipientUserPort,
+                auditLogUseCase);
+        when(repository.save(any(Draft.class))).thenAnswer(invocation -> {
+            Draft draft = invocation.getArgument(0);
+            draft.setId(10L);
+            return draft;
+        });
     }
 
     @Test
@@ -88,7 +102,43 @@ class CreateDraftServiceTest {
         assertThat(savedDraft.getPricingRuleId()).isEqualTo(pricingRuleId);
         assertThat(savedDraft.getEstimatedPrice()).isEqualByComparingTo("350.00");
 
+        verify(auditLogUseCase).create(any(CreateAuditLogCommand.class));
         verifyNoMoreInteractions(repository, barcodeGenerator, pricingRuleService);
+    }
+
+    @Test
+    @DisplayName("Должен записать аудит создания черновика")
+    void shouldAuditDraftCreation() {
+        // Given
+        String generatedBarcode = "DRF-260209-123456";
+        Long pricingRuleId = 1L;
+        when(barcodeGenerator.generate()).thenReturn(generatedBarcode);
+        when(pricingRuleService.calculatePrice(pricingRuleId)).thenReturn(new BigDecimal("350.00"));
+        when(recipientUserPort.findOrCreateByPhone(any())).thenReturn(3L);
+
+        var command = CreateDraftCommand.builder()
+                .draftCreatorId(1L)
+                .senderUserId(2L)
+                .recipientPhone("+79001234567")
+                .recipientAddress("г. Москва, ул. Тестовая, д. 1")
+                .pricingRuleId(pricingRuleId)
+                .build();
+
+        // When
+        createDraftService.create(command);
+
+        // Then
+        verify(auditLogUseCase).create(auditCaptor.capture());
+
+        var auditCommand = auditCaptor.getValue();
+        assertThat(auditCommand.actionTypeName()).isEqualTo("DRAFT_CREATE");
+        assertThat(auditCommand.userId()).isEqualTo(1L);
+        assertThat(auditCommand.tableName()).isEqualTo("waybill_drafts");
+        assertThat(auditCommand.recordId()).isEqualTo(10L);
+        assertThat(auditCommand.newValues())
+                .containsEntry("barcode", generatedBarcode)
+                .containsEntry("pricingRuleId", pricingRuleId)
+                .containsEntry("recipientAddress", "г. Москва, ул. Тестовая, д. 1");
     }
 
     @Test

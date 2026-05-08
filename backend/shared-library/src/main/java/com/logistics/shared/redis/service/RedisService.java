@@ -2,7 +2,7 @@ package com.logistics.shared.redis.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Bean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "logistics.redis.enabled", havingValue = "true", matchIfMissing = true)
 public class RedisService {
 
     private final RedisTemplate<String, Object> redisTemplate;

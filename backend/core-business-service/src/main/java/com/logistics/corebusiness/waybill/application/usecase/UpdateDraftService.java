@@ -1,5 +1,7 @@
 package com.logistics.corebusiness.waybill.application.usecase;
 
+import com.logistics.corebusiness.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.corebusiness.audit.application.port.in.command.CreateAuditLogCommand;
 import com.logistics.corebusiness.waybill.adapter.in.DraftControllerMapper;
 import com.logistics.corebusiness.waybill.adapter.in.web.dto.DraftResponse;
 import com.logistics.corebusiness.waybill.application.exception.DraftNotFoundException;
@@ -12,12 +14,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Сервис обновления черновика накладной.
  *
  * <h2>Бизнес-логика</h2>
  * - Обновляет только переданные поля (null = не изменять)
  * - Пересчитывает estimatedPrice если изменился тарифный план
+ * - Записывает аудит DRAFT_UPDATE
  *
  * <h2>Ограничения</h2>
  * Нельзя изменить CONFIRMED или CANCELLED черновик.
@@ -29,6 +35,7 @@ public class UpdateDraftService implements UpdateDraftUseCase {
 
     private final DraftRepository repository;
     private final PricingRuleService pricingRuleService;
+    private final CreateAuditLogUseCase auditLogUseCase;
 
     @Override
     public DraftResponse update(UpdateDraftCommand command) {
@@ -38,6 +45,29 @@ public class UpdateDraftService implements UpdateDraftUseCase {
         updateFields(draft, command);
 
         var updated = repository.save(draft);
+
+        Map<String, Object> auditDetails = new HashMap<>();
+        auditDetails.put("draftId", command.draftId());
+        if (command.recipientUserId() != null) {
+            auditDetails.put("recipientUserId", command.recipientUserId());
+        }
+        if (command.recipientAddress() != null) {
+            auditDetails.put("recipientAddress", command.recipientAddress());
+        }
+        if (command.pricingRuleId() != null) {
+            auditDetails.put("pricingRuleId", command.pricingRuleId());
+        }
+
+        auditLogUseCase.create(new CreateAuditLogCommand(
+                command.userId(),
+                "DRAFT_UPDATE",
+                null,
+                null,
+                auditDetails,
+                "waybill_drafts",
+                command.draftId()
+        ));
+
         return DraftControllerMapper.toResponse(updated);
     }
 

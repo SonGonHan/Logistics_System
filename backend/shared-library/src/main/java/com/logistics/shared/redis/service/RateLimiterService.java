@@ -1,6 +1,7 @@
 package com.logistics.shared.redis.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -10,6 +11,7 @@ import java.time.Duration;
  */
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "logistics.redis.enabled", havingValue = "true", matchIfMissing = true)
 public class RateLimiterService {
 
     private final RedisService redisService;

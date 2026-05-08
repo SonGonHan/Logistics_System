@@ -11,6 +11,7 @@ import CreateDraftPage from "./features/waybill/pages/CreateDraftPage";
 import EditDraftPage from "./features/waybill/pages/EditDraftPage";
 import WaybillDetailPage from "./features/waybill/pages/WaybillDetailPage";
 import AcceptancePage from "./features/acceptance/pages/AcceptancePage";
+import RatingPage from "./features/rating/pages/RatingPage";
 
 import ProtectedRoute from "./shared/routing/ProtectedRoute";
 
@@ -73,6 +74,15 @@ export default function App() {
                 element={
                     <ProtectedRoute>
                         <AcceptancePage />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/ratings/waybill/:waybillId"
+                element={
+                    <ProtectedRoute>
+                        <RatingPage />
                     </ProtectedRoute>
                 }
             />

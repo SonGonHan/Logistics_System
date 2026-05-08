@@ -1,5 +1,7 @@
 package com.logistics.corebusiness.waybill.application.usecase;
 
+import com.logistics.corebusiness.audit.application.port.in.CreateAuditLogUseCase;
+import com.logistics.corebusiness.audit.application.port.in.command.CreateAuditLogCommand;
 import com.logistics.corebusiness.waybill.application.port.in.CreateDraftUseCase;
 import com.logistics.corebusiness.waybill.application.port.in.command.CreateDraftCommand;
 import com.logistics.corebusiness.waybill.application.port.out.DraftRepository;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 /**
  * Сервис создания черновика накладной.
@@ -22,6 +25,7 @@ import java.time.LocalDateTime;
  * - Рассчитывает estimatedPrice = basePrice выбранного тарифного плана
  * - Устанавливает начальный статус PENDING
  * - Сохраняет черновик в БД
+ * - Записывает аудит DRAFT_CREATE
  */
 @Service
 @RequiredArgsConstructor
@@ -32,6 +36,7 @@ public class CreateDraftService implements CreateDraftUseCase {
     private final BarcodeGenerator barcodeGenerator;
     private final PricingRuleService pricingRuleService;
     private final RecipientUserPort recipientUserPort;
+    private final CreateAuditLogUseCase auditLogUseCase;
 
     @Override
     public void create(CreateDraftCommand command) {
@@ -50,6 +55,20 @@ public class CreateDraftService implements CreateDraftUseCase {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        repository.save(draft);
+        var saved = repository.save(draft);
+
+        auditLogUseCase.create(new CreateAuditLogCommand(
+                command.draftCreatorId(),
+                "DRAFT_CREATE",
+                null,
+                null,
+                Map.of(
+                        "barcode", barcode,
+                        "pricingRuleId", command.pricingRuleId(),
+                        "recipientAddress", command.recipientAddress()
+                ),
+                "waybill_drafts",
+                saved.getId()
+        ));
     }
 }
